@@ -1,5 +1,5 @@
 {
-  "name": "my-app",
+  "name": "migraine_genie_client",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -7,20 +7,32 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.0",
     "@mui/material": "^6.4.0",
+    "@svgr/plugin-svgo": "^8.1.0",
+    "@svgr/webpack": "^8.1.0",
     "axios": "^1.7.9",
     "cra-template": "1.2.0",
+    "nth-check": "^2.1.1",
+    "postcss": "^8.5.3",
     "react": "^19.0.0",
     "react-calendar": "^5.1.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.1.1",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^4.2.4"
+    "react-router-dom": "^7.2.0",
+    "react-scripts": "^5.0.0",
+    "resolve-url-loader": "^5.0.0",
+    "rollup-plugin-terser": "^4.0.3",
+    "serialize-javascript": "^6.0.2",
+    "svgo": "^3.3.2",
+    "web-vitals": "^4.2.4",
+    "workbox-build": "^7.3.0",
+    "workbox-webpack-plugin": "^7.3.0"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build && mv build/* ../docs",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "eslintConfig": {
     "extends": [
@@ -44,6 +56,9 @@
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "@types/react-router-dom": "^5.3.3",
+    "eslint": "^8.40.0",
+    "husky": "^8.0.0",
+    "prettier": "^3.0.0",
     "typescript": "4.9"
   }
 }

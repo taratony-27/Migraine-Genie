@@ -1,7 +1,7 @@
 
-# MERNBase
+# Migraine Genie
 
-This project is a MERN Stack Template designed to provide a ready-to-use boilerplate for building full-stack web applications using MongoDB, Express, React, and Node.js. It serves as a foundation for developers to kickstart their projects without the hassle of setting up folder structures, installing dependencies, or configuring essential tools.
+This project helps people track and manage their migraines. Users can log their symptoms, triggers, and medications to find patterns and understand their migraines better. The app makes it easy to spot what might be causing headaches and gives tips for relief. It’s a simple tool to help users feel more in control of their migraines.
 
 ---
 
