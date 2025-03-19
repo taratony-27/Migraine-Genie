@@ -4,48 +4,43 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './db/db';
 
-// Load environment variables
-dotenv.config({ path: './.env' });
+// Import routes
+import userRoutes from './routes/userRoutes';
+import triggerRoutes from './routes/triggerRoutes';
+import symptomRoutes from './routes/symptomRoutes';
+import medicationRoutes from './routes/medicationRoutes';
+import dailyInputRoutes from './routes/dailyInputRoutes';
 
-// Create an instance of Express
+// Load environment variables
+dotenv.config();
+
+// Create Express app
 const app = express();
 
 // Middleware
-app.use(cors()); // Enable CORS
-app.use(bodyParser.json()); // Parse incoming JSON requests
+app.use(cors());
+app.use(bodyParser.json());
 
 // Connect to MongoDB
 connectDB()
-  .then(() => {
-    console.log('Database connection established, starting the server...');
-  })
+  .then(() => console.log('Database connected'))
   .catch((err) => {
-    console.error('Failed to connect to the database. Exiting...', err);
-    process.exit(1); // Exit process if the database connection fails
+    console.error('Database connection error', err);
+    process.exit(1);
   });
 
-// Define routes
+// Base Route
 app.get('/', (req: Request, res: Response) => {
-  res.send('Welcome to the AI Model API');
+  res.send('Welcome to the AI Health Tracker API');
 });
 
-// Example route for API
-app.post('/api/model', async (req: Request, res: Response) => {
-  try {
-    const inputData = req.body; // Get data from the request body
+// API Routes
+app.use('/api/users', userRoutes);
+app.use('/api/triggers', triggerRoutes);
+app.use('/api/symptoms', symptomRoutes);
+app.use('/api/medications', medicationRoutes);
+app.use('/api/daily-inputs', dailyInputRoutes);
 
-    // Process the inputData here as needed
-    const modelOutput = `Processed data: ${JSON.stringify(inputData)}`;
-
-    res.json({ output: modelOutput });
-  } catch (error) {
-    console.error('Error processing request:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-
-// Start the server
-const PORT = process.env.PORT || 5000; // Default to port 5000 if PORT is not in .env
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Start server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
