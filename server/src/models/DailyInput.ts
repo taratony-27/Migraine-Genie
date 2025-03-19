@@ -6,6 +6,6 @@ const DailyInputSchema = new mongoose.Schema({
   log_date: { type: Date, required: true },
   notes: { type: String },
   created_at: { type: Date, default: Date.now }
-});
+}, { collection: 'dailyInputs' });
 
 export default mongoose.model('DailyInput', DailyInputSchema);
