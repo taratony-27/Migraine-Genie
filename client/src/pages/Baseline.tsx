@@ -15,7 +15,7 @@ const Baseline: React.FC = () => {
         px={3}
       >
         <Typography variant="h3" mb={3}>
-          Welcome to My App
+          Welcome to Baseline
         </Typography>
         <Typography variant="h5" mb={5}>
           XXXXXXXX

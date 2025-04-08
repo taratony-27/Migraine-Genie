@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
 
+// GET, POST, PUT, DELETE
+
 // Get all users
 export const getUsers = async (req: Request, res: Response) => {
   try {
@@ -11,3 +13,12 @@ export const getUsers = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error', error });
   }
 };
+
+// Update user
+
+
+// Delete user (Start)
+
+
+// Create/Post user
+
