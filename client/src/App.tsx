@@ -2,24 +2,25 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
-import Diary from './pages/Diary';
+import DailyLog from './components/DailyLog';
 import Profile from './pages/Profile';
 import Baseline from './pages/Baseline';
-import Program from './pages/Program';
-
-
+import WellnessProgram from './components/WelnessProgram';
+import Layout from './components/Layout'; // ✅ Corrected import
 
 const App: React.FC = () => {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/diary" element={<Diary />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/baseline" element={<Baseline />} />
-        <Route path="/program" element={<Program />} />
-      </Routes>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/daily-log" element={<DailyLog />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/baseline" element={<Baseline />} />
+          <Route path="/wellness-program" element={<WellnessProgram />} />
+        </Routes>
+      </Layout>
     </Router>
   );
 };
