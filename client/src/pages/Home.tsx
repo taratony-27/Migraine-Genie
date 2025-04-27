@@ -1,96 +1,220 @@
 import React from 'react';
-import { Box, Typography, Button, TextField, Paper } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Button,
+  TextField,
+  Paper,
+  Card,
+  CardContent,
+  Grid,
+  Container,
+  useTheme,
+  useMediaQuery
+} from '@mui/material';
+
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import GroupsIcon from '@mui/icons-material/Groups';
 
 const Home: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  const featureData = [
+    {
+      title: "Symptom Tracker",
+      desc: "Easily log your symptoms, triggers, and treatments.",
+      icon: <AutoAwesomeIcon sx={{ fontSize: 60, color: '#1565c0' }} />
+    },
+    {
+      title: "Personalized Insights",
+      desc: "Get tailored advice based on your migraine patterns.",
+      icon: <FavoriteIcon sx={{ fontSize: 60, color: '#c2185b' }} />
+    },
+    {
+      title: "Community Support",
+      desc: "Connect with others who understand your journey.",
+      icon: <GroupsIcon sx={{ fontSize: 60, color: '#2e7d32' }} />
+    },
+  ];
+
+  const testimonialsData = [
+    {
+      name: "Sarah K.",
+      feedback: "Migraine Genie helped me finally understand my triggers. Absolute game-changer!"
+    },
+    {
+      name: "Jason M.",
+      feedback: "The personalized insights helped me drastically reduce my migraine days."
+    },
+    {
+      name: "Emma T.",
+      feedback: "Simple, beautiful, and genuinely helpful. I recommend it to everyone I know."
+    },
+  ];
+
   return (
-    <Box 
-      display="flex" 
-      flexDirection="row" 
-      minHeight="100vh" 
-      justifyContent="center" 
-      alignItems="center"
-      sx={{ backgroundColor: '#e3f2fd', padding: 4 }}
-    >
-      {/* Left Side - Welcome Message (50%) */}
-      <Box 
-        flex={1}  // Keeps it truly 50% of the screen
-        display="flex" 
-        flexDirection="column" 
-        justifyContent="center" 
-        alignItems="flex-start"  // Aligns text to the left to use full width
-        sx={{ paddingLeft: 8, paddingRight: 4 }} // Adds spacing without shifting the balance
-      >
-        <Typography variant="h3" fontWeight="bold" color="#1565c0">
-          Welcome to Migraine Genie
-        </Typography>
-        <Typography 
-          variant="body1" 
-          color="textSecondary" 
-          textAlign="left" 
-          sx={{ marginTop: 2, maxWidth: '90%', marginLeft: 4 }} // Ensures text is slightly shifted but doesn't shrink content area
-        >
-          Your personalized migraine relief assistant. Track symptoms, get tailored recommendations, 
-          and take control of your migraine management journey.
-        </Typography>
-      </Box>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#e3f2fd' }}>
       
-      {/* Right Side - Login Box (50%) */}
-      <Box 
-        flex={1}  // Ensures right side also remains 50%
-        display="flex" 
-        justifyContent="center"  // Centers the login box properly
-        alignItems="center"
-      >
-        <Paper 
-          elevation={8} 
-          sx={{ 
-            maxWidth: 400,
-            width: '100%',
-            minHeight: 450, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            padding: 3, 
-            borderRadius: 3, 
-            backgroundColor: '#ffffff',
-            border: '2px solid #1565c0'
-          }}
-        >
-          <Typography variant="h5" fontWeight="bold" gutterBottom color="#1565c0">
-            Login
-          </Typography>
-          <Box width="90%">
-            <TextField
-              label="Email"
-              variant="outlined"
-              fullWidth
-              margin="dense"
-              name="email"
-              type="email"
-              autoComplete="email"
-            />
-            <TextField
-              label="Password"
-              variant="outlined"
-              fullWidth
-              margin="dense"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              sx={{ marginTop: 2, backgroundColor: '#1565c0', '&:hover': { backgroundColor: '#0d47a1' } }}
-              href='/dashboard'
-            >
-              Login
-            </Button>
+      {/* Hero Section */}
+      <Box sx={{ flexGrow: 1, py: 8 }}>
+        <Container maxWidth="lg" sx={{ minHeight: { xs: '90vh', md: '95vh' }, display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Welcome */}
+          <Box 
+            flex={1}
+            display="flex"
+            flexDirection="column"
+            alignItems={isMobile ? 'center' : 'flex-start'}
+            textAlign={isMobile ? 'center' : 'left'}
+            sx={{ mb: isMobile ? 4 : 0 }}
+          >
+            <Typography variant="h3" fontWeight="bold" color="#1565c0">
+              Welcome to Migraine Genie
+            </Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mt: 2, maxWidth: 500 }}>
+              Your personalized migraine relief assistant. Track symptoms, get tailored recommendations, and take control of your migraine management journey.
+            </Typography>
           </Box>
-        </Paper>
+
+          {/* Login */}
+          <Box flex={1} display="flex" justifyContent="center" alignItems="center">
+            <Paper 
+              elevation={8}
+              sx={{
+                maxWidth: 400,
+                width: '100%',
+                minHeight: 450,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 3,
+                borderRadius: 3,
+                backgroundColor: '#ffffff',
+                border: '2px solid #1565c0'
+              }}
+            >
+              <Typography variant="h5" fontWeight="bold" gutterBottom color="#1565c0">
+                Login
+              </Typography>
+              <Box width="90%">
+                <TextField
+                  label="Email"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  type="email"
+                />
+                <TextField
+                  label="Password"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  type="password"
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  sx={{ mt: 2, backgroundColor: '#1565c0', '&:hover': { backgroundColor: '#0d47a1' } }}
+                  href='/dashboard'
+                >
+                  Login
+                </Button>
+              </Box>
+            </Paper>
+          </Box>
+        </Container>
       </Box>
+
+      {/* About Us Section */}
+      <Box sx={{ flexGrow: 1, backgroundColor: '#bbdefb', py: 10 }}>
+        <Container maxWidth="md" sx={{ minHeight: { xs: '80vh', md: '85vh' }, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+          <Typography variant="h4" fontWeight="bold" color="#0d47a1" textAlign="center" mb={4}>
+            About Us
+          </Typography>
+          <Typography variant="body1" color="textSecondary" textAlign="center" maxWidth="sm">
+            Migraine Genie was created to help individuals manage and understand their migraines through smart tracking, personalized recommendations, and community support.
+          </Typography>
+        </Container>
+      </Box>
+
+      {/* Features Section */}
+      <Box sx={{ flexGrow: 1, backgroundColor: '#e3f2fd', py: 10 }}>
+        <Container maxWidth="lg" sx={{ minHeight: { xs: '80vh', md: '85vh' }, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <Typography variant="h4" fontWeight="bold" color="#0d47a1" textAlign="center" mb={6}>
+            Features
+          </Typography>
+          <Grid container spacing={4} justifyContent="center">
+            {featureData.map((feature, idx) => (
+              <Grid item xs={12} md={4} key={idx}>
+                <Card 
+                  elevation={6} 
+                  sx={{ 
+                    background: 'linear-gradient(135deg, #ffffff 0%, #bbdefb 100%)', 
+                    p: 4, 
+                    height: '100%', 
+                    borderRadius: 4,
+                    textAlign: 'center',
+                    transition: 'transform 0.3s ease',
+                    '&:hover': {
+                      transform: 'scale(1.05)'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                    {feature.icon}
+                    <Typography variant="h6" fontWeight="bold" color="primary" mt={2}>
+                      {feature.title}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" mt={1}>
+                      {feature.desc}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* Testimonials Section */}
+      <Box sx={{ flexGrow: 1, backgroundColor: '#bbdefb', py: 10 }}>
+        <Container maxWidth="lg" sx={{ minHeight: { xs: '80vh', md: '85vh' }, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <Typography variant="h4" fontWeight="bold" color="#0d47a1" textAlign="center" mb={6}>
+            Testimonials
+          </Typography>
+          <Grid container spacing={4} justifyContent="center">
+            {testimonialsData.map((testimonial, idx) => (
+              <Grid item xs={12} md={4} key={idx}>
+                <Card 
+                  elevation={8} 
+                  sx={{ 
+                    background: '#ffffff', 
+                    border: '1px solid #1565c0',
+                    borderRadius: 4, 
+                    p: 4, 
+                    textAlign: 'center',
+                    boxShadow: '0 4px 20px rgba(21, 101, 192, 0.2)',
+                    height: '100%',
+                  }}
+                >
+                  <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                    <Typography variant="body1" color="textSecondary" fontStyle="italic" mb={2}>
+                      "{testimonial.feedback}"
+                    </Typography>
+                    <Typography variant="subtitle2" fontWeight="bold" color="#1565c0">
+                      - {testimonial.name}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
+
     </Box>
   );
 };
