@@ -6,6 +6,8 @@ import DailyLog from './components/DailyLog';
 import Profile from './pages/Profile';
 import Baseline from './pages/Baseline';
 import WellnessProgram from './components/WelnessProgram';
+import AIAssistant from './components/AIAssistant';
+import MonitoringReport from './components/MonitoringReport';
 import Layout from './components/Layout'; // ✅ Corrected import
 
 const App: React.FC = () => {
@@ -19,6 +21,8 @@ const App: React.FC = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/baseline" element={<Baseline />} />
           <Route path="/wellness-program" element={<WellnessProgram />} />
+          <Route path="/ai-assistant" element={<AIAssistant />} />
+          <Route path="/monitoring-report" element={<MonitoringReport />} />
         </Routes>
       </Layout>
     </Router>
