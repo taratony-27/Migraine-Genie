@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, IconButton, Menu, MenuItem, Avatar, Box } from '@mui/material';
-import { useLocation, useNavigate } from 'react-router-dom'; // 👈 Add useNavigate
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Header: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate(); // 👈 Initialize navigate
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -15,6 +15,11 @@ const Header: React.FC = () => {
     setAnchorEl(null);
   };
 
+  const goToProfile = () => {
+    handleMenuClose();
+    navigate('/profile');
+  };
+
   const isHome = location.pathname === "/";
 
   return (
@@ -23,11 +28,8 @@ const Header: React.FC = () => {
         <Typography
           variant="h6"
           fontWeight="bold"
-          onClick={() => navigate('/')} // 👈 Redirect to Home on click
-          sx={{
-            cursor: 'pointer', // 👈 Make it obvious it's clickable
-            userSelect: 'none', // optional: prevent text highlight
-          }}
+          onClick={() => navigate('/')}
+          sx={{ cursor: 'pointer', userSelect: 'none' }}
         >
           MigraineGenie
         </Typography>
@@ -47,7 +49,7 @@ const Header: React.FC = () => {
               onClose={handleMenuClose}
             >
               <MenuItem onClick={handleMenuClose}>Account</MenuItem>
-              <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
+              <MenuItem onClick={goToProfile}>Profile</MenuItem>
               <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
               <MenuItem onClick={handleMenuClose}>Logout</MenuItem>
             </Menu>

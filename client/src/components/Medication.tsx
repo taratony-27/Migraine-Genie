@@ -5,7 +5,7 @@ const Medication: React.FC = () => {
   const [form, setForm] = useState({
     medicationName: '',
     dosage: '',
-    frequency: '',
+    frequency: '', //Change to predefined dropdown/radio button
     startDate: '',
     endDate: '',
     notes: '',

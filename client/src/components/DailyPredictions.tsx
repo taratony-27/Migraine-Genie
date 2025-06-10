@@ -46,6 +46,7 @@ const DailyPredictions: React.FC = () => (
     </Grid>
 
     {/* Migraine Risk Forecast */}
+    {/* Need to Highlight today; Need to show 7 days */}
     <Box mt={3}>
       <Typography variant="subtitle1" fontWeight="bold" mb={1}>
         Migraine Risk Forecast

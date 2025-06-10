@@ -8,7 +8,7 @@ import Baseline from './pages/Baseline';
 import WellnessProgram from './components/WelnessProgram';
 import AIAssistant from './components/AIAssistant';
 import MonitoringReport from './components/MonitoringReport';
-import Layout from './components/Layout'; // ✅ Corrected import
+import Layout from './components/Layout';
 
 const App: React.FC = () => {
   return (

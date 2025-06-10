@@ -20,7 +20,7 @@ import DailyPredictions from '../components/DailyPredictions';
 import Medication from '../components/Medication';
 import WellnessProgram from '../components/WelnessProgram';
 import AIAssistant from '../components/AIAssistant';
-import MonitoringReport from '../components/MonitoringReport';
+import MonitoringReport from '../components/MonitoringReport'; //Need to change
 
 const tabs = [
   'Daily Trigger Prediction',
@@ -28,7 +28,7 @@ const tabs = [
   'Wellness Program',
   'Medication',
   'AI Assistant',
-  'Symptom and Trigger Monitoring Report'
+  'Visualization Report'
 ];
 
 const Dashboard: React.FC = () => {
