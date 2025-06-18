@@ -22,10 +22,11 @@ const DailyLogHistory: React.FC = () => {
           <Typography variant="body2">Trigger: {entry.trigger}</Typography>
           <Typography variant="body2">Notes: {entry.notes || '—'}</Typography>
 
-          {entry.symptoms && (
+          {entry.symptoms && Object.values(entry.symptoms).some(val => val) && (
             <Typography variant="body2" mt={1}>
               <strong>Symptoms:</strong>{' '}
               {Object.entries(entry.symptoms)
+                .filter(([, val]) => val && val !== '')
                 .map(([key, val]) => `${key}: ${val}`)
                 .join(', ')}
             </Typography>

@@ -4,6 +4,13 @@ import {
   Slider, Switch, FormControl, FormLabel, FormControlLabel,
   Radio, RadioGroup
 } from '@mui/material';
+import SunnyIcon from '@mui/icons-material/WbSunny';
+import WbCloudyIcon from '@mui/icons-material/WbCloudy';
+import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
+import AirIcon from '@mui/icons-material/Air';
+import WaterDropIcon from '@mui/icons-material/WaterDrop';
+import GrainIcon from '@mui/icons-material/Grain';
+
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
 const triggers = [
@@ -182,6 +189,11 @@ const DailyLog: React.FC = () => {
                 ))}
               </TextField>
 
+              {/*Weather including icons*/}
+              <Typography variant="subtitle1" >
+                Weather
+              </Typography>
+
               {symptomInputs.map(({ key, label, type }) => (
                 <FormControl key={key} fullWidth>
                   <FormLabel>{label}</FormLabel>
@@ -256,7 +268,7 @@ const DailyLog: React.FC = () => {
               >
                 Save Entry
               </Button>
-            </Box>
+        </Box>
       )}      
     </Box>
   );
