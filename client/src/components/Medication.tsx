@@ -8,7 +8,7 @@ import {
   Paper,
 } from '@mui/material';
 import MedicationHistory from './MedicationHistory';
-import { useTheme, useMediaQuery } from '@mui/material';
+//import { useTheme, useMediaQuery } from '@mui/material';
 import axios from 'axios';
 
 const Medication: React.FC = () => {
@@ -22,8 +22,8 @@ const Medication: React.FC = () => {
   });
 
   const [showHistory, setShowHistory] = useState(false);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  //const theme = useTheme();
+  //const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

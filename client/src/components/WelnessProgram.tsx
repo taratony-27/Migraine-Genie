@@ -1,88 +1,69 @@
-import React, { useState } from 'react';
-import { Box, Typography, Divider, Button, TextField, LinearProgress } from '@mui/material';
+import React from 'react';
+import { Box, Typography, Link, Divider, Button } from '@mui/material';
+
+const wellnessItems = [
+  {
+    title: '6 Simple Stretches for Migraine Relief',
+    desc: 'Easy stretches that can ease tension and support migraine relief.',
+  },
+  {
+    title: 'Tai Chi for Migraine Relief',
+    desc: 'Explore how Tai Chi improves balance and reduces migraine frequency.',
+  },
+  {
+    title: 'High-Intensity Aerobic Exercise & Migraines',
+    desc: 'Research-backed benefits of aerobic workouts for episodic migraines.',
+  },
+  {
+    title: 'Meditation for Migraine Relief',
+    desc: 'How mindfulness practices can reduce migraine intensity and frequency.',
+  },
+];
 
 const WellnessProgram: React.FC = () => {
-  const [goalDays, setGoalDays] = useState<number>(0);
-  const [completedDays, setCompletedDays] = useState<number>(0);
-  const [inputGoal, setInputGoal] = useState<string>('');
-
-  const handleSetGoal = () => {
-    const parsed = parseInt(inputGoal);
-    if (!isNaN(parsed) && parsed > 0) {
-      setGoalDays(parsed);
-      setCompletedDays(0); // reset progress when setting a new goal
-    }
-  };
-
-  const handleMarkDone = () => {
-    if (completedDays < goalDays) {
-      setCompletedDays(prev => prev + 1);
-    }
-  };
-
-  const progressPercent = goalDays > 0 ? (completedDays / goalDays) * 100 : 0;
-
   return (
-    <Box display="flex" flexDirection="column" width="100%">
-      <Typography variant="subtitle1" color="text.secondary" mb={4} textAlign="center">
-        A Journey Toward Healthier Living
+    <Box maxWidth="md" mx="auto" py={6} px={2}>
+      <Typography variant="h3" fontWeight="bold" textAlign="center" gutterBottom>
+        Wellness Program
       </Typography>
 
-      <Divider sx={{ mb: 4 }} />
-
-      <Typography variant="body1" color="text.secondary" mb={2}>
-        Welcome to your personalized wellness hub! Here, you'll find daily exercises,
-        mindfulness techniques, and expert health tips designed to improve your lifestyle and well-being.
+      <Typography variant="body1" color="textSecondary" textAlign="center" mb={4}>
+        Welcome to your personalized wellness hub! Here, you'll find daily exercises, mindfulness
+        techniques, and expert health tips designed to improve your lifestyle and well-being.
       </Typography>
 
-      <Typography variant="body1" color="text.secondary" mb={4}>
-        Begin your journey to a healthier you by exploring our curated programs tailored to your needs.
-      </Typography>
-
-      <Box mb={3} display="flex" gap={2} alignItems="center">
-        <TextField
-          label="Set goal (days)"
-          type="number"
-          value={inputGoal}
-          onChange={(e) => setInputGoal(e.target.value)}
-          sx={{ width: 150 }}
-        />
-        <Button variant="outlined" onClick={handleSetGoal}>
-          Set Goal
-        </Button>
-      </Box>
-
-      {goalDays > 0 && (
-        <Box mb={3}>
-          <Typography mb={1}>
-            Progress: {completedDays} / {goalDays} days
+      {wellnessItems.map((item, index) => (
+        <Box key={index} mb={4}>
+          <Typography variant="h6" fontWeight="bold">
+            {index + 1}. {item.title}
           </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={progressPercent}
-            sx={{ height: 10, borderRadius: 5 }}
-          />
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleMarkDone}
-            sx={{ mt: 2 }}
-            disabled={completedDays >= goalDays}
+          <Typography variant="body2" color="textSecondary" mt={0.5}>
+            {item.desc}
+          </Typography>
+          <Link
+            component="button"
+            underline="hover"
+            color="primary"
+            fontSize="0.9rem"
+            mt={1}
+            sx={{ display: 'inline-block', mt: 1 }}
           >
-            Mark Today as Done
-          </Button>
+            Read More »
+          </Link>
+          <Divider sx={{ mt: 2 }} />
         </Box>
-      )}
+      ))}
 
-      <Box textAlign="center" mt={4}>
+      {/* Goal Tracker Button */}
+      <Box textAlign="center" mt={6}>
         <Button
           variant="contained"
-          size="large"
           color="primary"
-          href="/dashboard"
+          size="large"
           sx={{ borderRadius: 8, px: 5, py: 1.5, fontWeight: 'bold' }}
+          href="/goal-tracker"
         >
-          Start Now
+          Goal Tracker
         </Button>
       </Box>
     </Box>

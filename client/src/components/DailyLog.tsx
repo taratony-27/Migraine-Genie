@@ -12,13 +12,6 @@ import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
 import AirIcon from '@mui/icons-material/Air';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import GrainIcon from '@mui/icons-material/Grain';
-import SunnyIcon from '@mui/icons-material/WbSunny';
-import WbCloudyIcon from '@mui/icons-material/WbCloudy';
-import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
-import AirIcon from '@mui/icons-material/Air';
-import WaterDropIcon from '@mui/icons-material/WaterDrop';
-import GrainIcon from '@mui/icons-material/Grain';
-
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
 const triggers = [
