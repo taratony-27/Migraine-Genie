@@ -4,6 +4,14 @@ import {
   Slider, Switch, FormControl, FormLabel, FormControlLabel,
   Radio, RadioGroup
 } from '@mui/material';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import SunnyIcon from '@mui/icons-material/WbSunny';
+import WbCloudyIcon from '@mui/icons-material/WbCloudy';
+import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
+import AirIcon from '@mui/icons-material/Air';
+import WaterDropIcon from '@mui/icons-material/WaterDrop';
+import GrainIcon from '@mui/icons-material/Grain';
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
 const triggers = [
@@ -50,6 +58,29 @@ const DailyLog: React.FC = () => {
     notes: '',
     ...Object.fromEntries(symptomInputs.map(({ key }) => [key, '']))
   });
+
+  const [weatherTriggers, setWeatherTriggers] = useState<string[]>([]);
+  const handleWeatherTrigger = (
+    event: React.MouseEvent<HTMLElement>,
+    newWeatherTriggers: string[]
+  ) => {
+    setWeatherTriggers(newWeatherTriggers);
+    setEntry((prev: any) => ({
+      ...prev,
+      trigger: newWeatherTriggers.join(', '),
+    }));
+  };
+  const [foodTriggers, setFoodTriggers] = useState<string[]>([]);
+  const handleFoodTrigger = (
+    event: React.MouseEvent<HTMLElement>,
+    newFoodTriggers: string[]
+  ) => {
+    setFoodTriggers(newFoodTriggers);
+    setEntry((prev: any) => ({
+      ...prev,
+      trigger: newFoodTriggers.join(', '),
+    }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -181,6 +212,263 @@ const DailyLog: React.FC = () => {
                   <MenuItem key={trigger} value={trigger}>{trigger}</MenuItem>
                 ))}
               </TextField>
+
+
+    <Typography variant="subtitle1" >
+      Weather
+    </Typography>
+
+    
+
+    <ToggleButtonGroup
+      value={weatherTriggers}
+      onChange={handleWeatherTrigger}
+      aria-label="weather triggers"
+    >
+      <ToggleButton value="sunny" aria-label="sunny" sx={{ width: 100 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+          <SunnyIcon />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Sunny
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="cloudy" aria-label="cloudy" sx={{ width: 100 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+          <WbCloudyIcon />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Cloudy
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="thunder" aria-label="thunder" sx={{ width: 100 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+          <ThunderstormIcon />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Thunderstorm
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="windy" aria-label="windy" sx={{ width: 100 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+          <AirIcon />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Windy
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="rainy" aria-label="rainy" sx={{ width: 100 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+          <WaterDropIcon />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Rainy
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="snowy" aria-label="snowy" sx={{ width: 100 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+          <GrainIcon />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Snowy
+          </Typography>
+        </Box>
+      </ToggleButton>
+    </ToggleButtonGroup>
+
+    <Typography variant="subtitle1" >
+      Food
+    </Typography>
+
+    <ToggleButtonGroup
+      value={foodTriggers}
+      onChange={handleFoodTrigger}
+      aria-label="food triggers"
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+      }}
+    >
+      <ToggleButton value="alcohol" aria-label="alcohol" sx={{ width: 100, height: 75 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/alcohol.svg"
+          alt="Alcohol"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Alcohol
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="caffeine" aria-label="caffeine" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/caffeine.svg"
+          alt="Caffeine"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Caffeine
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="citrus" aria-label="citrus" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/citrus.svg"
+          alt="Citrus"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Citrus Fruits
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="banana" aria-label="banana" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/banana.png"
+          alt="Banana"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Banana
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="avocado" aria-label="avocado" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/avocado.png"
+          alt="Avocado"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Avocado
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="cheese" aria-label="cheese" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/cheese.svg"
+          alt="Cheese"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Cheese
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="milk" aria-label="milk" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/milk.svg"
+          alt="Milk"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Milk
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="yogurt" aria-label="yogurt" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/yogurt.svg"
+          alt="Yogurt"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Yogurt
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="icecream" aria-label="icecream" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/icecream.svg"
+          alt="Icecream"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Ice cream
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="chocolate" aria-label="chocolate" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/chocolate.svg"
+          alt="Chocolate"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Chocolate
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="peanutbutter" aria-label="peanutbutter" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/peanutbutter.svg"
+          alt="Peanutbutter"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Peanut butter
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="nuts" aria-label="nuts" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/nuts.png"
+          alt="Nuts"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Nuts
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="processedmeats" aria-label="processedmeats" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/processedmeats.svg"
+          alt="Processedmeats"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Processsed meats
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="fermentedfoods" aria-label="fermentedfoods" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/pickle.png"
+          alt="Fermented foods"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Fermented foods
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="msg" aria-label="msg" sx={{ width: 100, height: 75  }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/chips.png"
+          alt="msg"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Foods with MSG
+          </Typography>
+        </Box>
+      </ToggleButton>
+    </ToggleButtonGroup>
 
               {symptomInputs.map(({ key, label, type }) => (
                 <FormControl key={key} fullWidth>
