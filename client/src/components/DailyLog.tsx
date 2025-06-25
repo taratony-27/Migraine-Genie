@@ -21,6 +21,7 @@ const triggers = [
 
 const problemOptions = ['No problem', 'Mild problem', 'Moderate problem', 'Severe problem'];
 
+//Need to also add in array of objects for Weather and Food
 const symptomInputs = [
   { key: 'imbalance', label: 'Imbalance', type: 'slider' },
   { key: 'spinningSensation', label: 'Spinning sensation', type: 'slider' },
@@ -217,13 +218,6 @@ const DailyLog: React.FC = () => {
               <Typography variant="subtitle1" >
                 Weather
               </Typography>
-
-
-    <Typography variant="subtitle1" >
-      Weather
-    </Typography>
-
-    
 
     <ToggleButtonGroup
       value={weatherTriggers}

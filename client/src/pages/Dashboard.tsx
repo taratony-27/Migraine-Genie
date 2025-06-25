@@ -20,7 +20,7 @@ import DailyPredictions from '../components/DailyPredictions';
 import Medication from '../components/Medication';
 import WellnessProgram from '../components/WelnessProgram';
 import AIAssistant from '../components/AIAssistant';
-import MonitoringReport from '../components/MonitoringReport'; //Need to change
+import Visualization from '../components/Visualization'; //Need to change
 
 const tabs = [
   'Daily Trigger Prediction',
@@ -61,8 +61,8 @@ const Dashboard: React.FC = () => {
         return <Medication />;
       case 'AI Assistant':
         return <AIAssistant />;
-      case 'Symptom and Trigger Monitoring Report':
-        return <MonitoringReport />;
+      case 'Visualization Report':
+        return <Visualization />;
       case 'Daily Trigger Prediction':
       default:
         return <DailyPredictions />;

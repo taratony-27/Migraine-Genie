@@ -1,7 +1,7 @@
 import React from 'react';
-import { Box, Typography, Divider, Button } from '@mui/material';
+import { Box, Typography, Divider } from '@mui/material';
 
-const MonitoringReport: React.FC = () => {
+const Visualization: React.FC = () => {
   return (
     <Box
       display="flex"
@@ -9,7 +9,7 @@ const MonitoringReport: React.FC = () => {
       width="100%"
     >
       <Typography variant="h4" fontWeight="bold" mb={2} color="primary.main" textAlign="center">
-        Symptom and Trigger Monitoring Report
+        Visualization Report
       </Typography>
 
       <Divider sx={{ mb: 4 }} />
@@ -18,4 +18,4 @@ const MonitoringReport: React.FC = () => {
   );
 };
 
-export default MonitoringReport;
+export default Visualization;

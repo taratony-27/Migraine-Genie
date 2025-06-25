@@ -1,6 +1,8 @@
 import React from 'react';
 import { Box, Typography, Link, Divider, Button } from '@mui/material';
 
+//Bug for mobile view. Still can scroll horizontally
+
 const wellnessItems = [
   {
     title: '6 Simple Stretches for Migraine Relief',

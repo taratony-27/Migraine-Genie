@@ -7,7 +7,7 @@ import Profile from './pages/Profile';
 import Baseline from './pages/Baseline';
 import WellnessProgram from './components/WelnessProgram';
 import AIAssistant from './components/AIAssistant';
-import MonitoringReport from './components/MonitoringReport';
+import Visualization from './components/Visualization';
 import Layout from './components/Layout';
 
 const App: React.FC = () => {
@@ -22,7 +22,7 @@ const App: React.FC = () => {
           <Route path="/baseline" element={<Baseline />} />
           <Route path="/wellness-program" element={<WellnessProgram />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
-          <Route path="/monitoring-report" element={<MonitoringReport />} />
+          <Route path="/visualization" element={<Visualization />} />
         </Routes>
       </Layout>
     </Router>
