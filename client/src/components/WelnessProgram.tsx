@@ -1,7 +1,5 @@
 import React from 'react';
-import { Box, Typography, Link, Divider, Button } from '@mui/material';
-
-//Bug for mobile view. Still can scroll horizontally
+import { Box, Typography, Divider, Button, Link, useMediaQuery, useTheme } from '@mui/material';
 
 const wellnessItems = [
   {
@@ -23,50 +21,84 @@ const wellnessItems = [
 ];
 
 const WellnessProgram: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
-    <Box maxWidth="md" mx="auto" py={6} px={2}>
-      <Typography variant="h3" fontWeight="bold" textAlign="center" gutterBottom>
-        Wellness Program
-      </Typography>
-
-      <Typography variant="body1" color="textSecondary" textAlign="center" mb={4}>
-        Welcome to your personalized wellness hub! Here, you'll find daily exercises, mindfulness
-        techniques, and expert health tips designed to improve your lifestyle and well-being.
-      </Typography>
-
-      {wellnessItems.map((item, index) => (
-        <Box key={index} mb={4}>
-          <Typography variant="h6" fontWeight="bold">
-            {index + 1}. {item.title}
-          </Typography>
-          <Typography variant="body2" color="textSecondary" mt={0.5}>
-            {item.desc}
-          </Typography>
-          <Link
-            component="button"
-            underline="hover"
-            color="primary"
-            fontSize="0.9rem"
-            mt={1}
-            sx={{ display: 'inline-block', mt: 1 }}
+    <Box
+      sx={{
+        width: '100%',
+        maxWidth: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        px: 2,
+        py: { xs: 4, sm: 6 },
+        boxSizing: 'border-box',
+      }}
+    >
+      <Box width="100%" maxWidth="md">
+        {!isMobile && (
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            textAlign="center"
+            gutterBottom
           >
-            Read More »
-          </Link>
-          <Divider sx={{ mt: 2 }} />
-        </Box>
-      ))}
+            Wellness Program
+          </Typography>
+        )}
 
-      {/* Goal Tracker Button */}
-      <Box textAlign="center" mt={6}>
-        <Button
-          variant="contained"
-          color="primary"
-          size="large"
-          sx={{ borderRadius: 8, px: 5, py: 1.5, fontWeight: 'bold' }}
-          href="/goal-tracker"
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          textAlign="center"
+          mb={4}
+          sx={{ wordWrap: 'break-word' }}
         >
-          Goal Tracker
-        </Button>
+          Welcome to your personalized wellness hub! Here, you'll find daily exercises, mindfulness
+          techniques, and expert health tips designed to improve your lifestyle and well-being.
+        </Typography>
+
+        {wellnessItems.map((item, index) => (
+          <Box
+            key={index}
+            mb={4}
+            sx={{
+              wordWrap: 'break-word',
+              overflowWrap: 'anywhere',
+              width: '100%',
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold">
+              {index + 1}. {item.title}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mt={0.5}>
+              {item.desc}
+            </Typography>
+            <Link
+              component="button"
+              underline="hover"
+              color="primary"
+              sx={{ fontSize: '0.9rem', mt: 1, display: 'inline-block' }}
+            >
+              Read More »
+            </Link>
+            <Divider sx={{ mt: 2 }} />
+          </Box>
+        ))}
+
+        <Box textAlign="center" mt={6}>
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            sx={{ borderRadius: 8, px: 5, py: 1.5, fontWeight: 'bold' }}
+            href="/goal-tracker"
+          >
+            Goal Tracker
+          </Button>
+        </Box>
       </Box>
     </Box>
   );

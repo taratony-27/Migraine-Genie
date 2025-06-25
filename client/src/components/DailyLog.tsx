@@ -137,7 +137,7 @@ const DailyLog: React.FC = () => {
     <Box width="100%">
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h4" fontWeight="bold" color="#1565c0">
-          Migraine Diary Entry
+          Diary Entry
         </Typography>
         <Button
           variant="outlined"
