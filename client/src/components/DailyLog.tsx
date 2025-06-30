@@ -135,13 +135,20 @@ const DailyLog: React.FC = () => {
   return (
     <Box width="100%">
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4" fontWeight="bold" color="#1565c0">
+        <Typography variant="h4" fontWeight="bold" color="#1565c0"
+        sx={{
+          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }, // Adjust font size for different screen sizes
+        }}>
           Migraine Diary Entry
         </Typography>
         <Button
           variant="outlined"
           onClick={toggleHistory}
-          sx={{ width: 'fit-content' }}
+          sx={{
+            width: { xs: '85px', sm: 'fit-content' }, // Smaller width for phones, fit-content for larger screens
+            fontSize: { xs: '0.6rem', sm: '1rem' }, // Smaller font size for phones
+            padding: { xs: '4px 8px', sm: '6px 12px' }, // Adjust padding for smaller screens
+          }}
         >
           {showHistory ? 'Hide History' : 'View History'}
         </Button>
@@ -217,15 +224,21 @@ const DailyLog: React.FC = () => {
     <Typography variant="subtitle1" >
       Weather
     </Typography>
-
-    
-
     <ToggleButtonGroup
       value={weatherTriggers}
       onChange={handleWeatherTrigger}
       aria-label="weather triggers"
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start', 
+      }}
     >
-      <ToggleButton value="sunny" aria-label="sunny" sx={{ width: 100 }}>
+      <ToggleButton value="sunny" aria-label="sunny" 
+       sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <SunnyIcon />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -233,7 +246,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="cloudy" aria-label="cloudy" sx={{ width: 100 }}>
+      <ToggleButton value="cloudy" aria-label="cloudy" 
+       sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <WbCloudyIcon />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -241,7 +258,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="thunder" aria-label="thunder" sx={{ width: 100 }}>
+      <ToggleButton value="thunder" aria-label="thunder" 
+       sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <ThunderstormIcon />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -249,7 +270,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="windy" aria-label="windy" sx={{ width: 100 }}>
+      <ToggleButton value="windy" aria-label="windy" 
+       sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <AirIcon />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -257,7 +282,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="rainy" aria-label="rainy" sx={{ width: 100 }}>
+      <ToggleButton value="rainy" aria-label="rainy" 
+       sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <WaterDropIcon />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -265,7 +294,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="snowy" aria-label="snowy" sx={{ width: 100 }}>
+      <ToggleButton value="snowy" aria-label="snowy" 
+       sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <GrainIcon />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -278,7 +311,6 @@ const DailyLog: React.FC = () => {
     <Typography variant="subtitle1" >
       Food
     </Typography>
-
     <ToggleButtonGroup
       value={foodTriggers}
       onChange={handleFoodTrigger}
@@ -286,9 +318,14 @@ const DailyLog: React.FC = () => {
       sx={{
         display: 'flex',
         flexWrap: 'wrap',
+        justifyContent: 'flex-start',
       }}
     >
-      <ToggleButton value="alcohol" aria-label="alcohol" sx={{ width: 100, height: 75 }}>
+      <ToggleButton value="alcohol" aria-label="alcohol" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/alcohol.svg"
@@ -300,7 +337,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="caffeine" aria-label="caffeine" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="caffeine" aria-label="caffeine" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/caffeine.svg"
@@ -312,7 +353,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="citrus" aria-label="citrus" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="citrus" aria-label="citrus" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/citrus.svg"
@@ -324,7 +369,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="banana" aria-label="banana" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="banana" aria-label="banana" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/banana.png"
@@ -336,7 +385,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="avocado" aria-label="avocado" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="avocado" aria-label="avocado" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/avocado.png"
@@ -348,7 +401,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="cheese" aria-label="cheese" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="cheese" aria-label="cheese" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/cheese.svg"
@@ -360,7 +417,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="milk" aria-label="milk" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="milk" aria-label="milk" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/milk.svg"
@@ -372,7 +433,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="yogurt" aria-label="yogurt" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="yogurt" aria-label="yogurt" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/yogurt.svg"
@@ -384,7 +449,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="icecream" aria-label="icecream" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="icecream" aria-label="icecream" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/icecream.svg"
@@ -396,7 +465,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="chocolate" aria-label="chocolate" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="chocolate" aria-label="chocolate" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/chocolate.svg"
@@ -408,7 +481,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="peanutbutter" aria-label="peanutbutter" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="peanutbutter" aria-label="peanutbutter" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/peanutbutter.svg"
@@ -420,7 +497,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="nuts" aria-label="nuts" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="nuts" aria-label="nuts" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/nuts.png"
@@ -432,7 +513,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="processedmeats" aria-label="processedmeats" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="processedmeats" aria-label="processedmeats" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/processedmeats.svg"
@@ -444,7 +529,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="fermentedfoods" aria-label="fermentedfoods" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="fermentedfoods" aria-label="fermentedfoods" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/pickle.png"
@@ -456,7 +545,11 @@ const DailyLog: React.FC = () => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="msg" aria-label="msg" sx={{ width: 100, height: 75  }}>
+      <ToggleButton value="msg" aria-label="msg" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/chips.png"
@@ -474,6 +567,14 @@ const DailyLog: React.FC = () => {
                 <FormControl key={key} fullWidth>
                   <FormLabel>{label}</FormLabel>
                   {type === 'slider' ? (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',    // Align items vertically
+                        width: '100%',           // Ensure the container takes full width
+                        padding: { xs: 1, md: 2 }, // Add padding for phones and larger screens
+                      }}
+                   >
                     <Slider
                       name={key}
                       value={parseInt(entry[key]) || 0}
@@ -487,7 +588,12 @@ const DailyLog: React.FC = () => {
                         { value: 2, label: 'Moderate' },
                         { value: 3, label: 'Severe' },
                       ]}
+                      sx={{
+                        width: { xs: '90%', md: '90%' }, // Shrink slider width for phones
+                        height: { xs: 4, md: 8 },        // Adjust slider height for phones
+                      }}
                     />
+                   </Box>
                   ) : type === 'dropdown' ? (
                     <TextField
                       select
@@ -500,16 +606,24 @@ const DailyLog: React.FC = () => {
                       ))}
                     </TextField>
                   ) : type === 'radio' ? (
+                    <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: 1 }}>
                     <RadioGroup
-                      row
                       name={key}
                       value={entry[key]}
                       onChange={handleChange}
+                      sx={{
+                      flexDirection: { xs: 'column', sm: 'row', lg: 'row' } // Vertical for phones, horizontal for laptops
+                      }}
                     >
                       {problemOptions.map(opt => (
-                        <FormControlLabel key={opt} value={opt} control={<Radio />} label={opt} />
+                      <FormControlLabel key={opt} value={opt} control={<Radio />} label={opt} />
                       ))}
                     </RadioGroup>
+                    </Box>
                   ) : type === 'switch' ? (
                     <FormControlLabel
                       control={
