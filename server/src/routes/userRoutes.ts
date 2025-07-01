@@ -1,10 +1,15 @@
+// routes/userRoutes.ts
 import express from 'express';
-import { loginUser, signupUser, getUsers } from '../controllers/userController';
+import { getUsers, loginUser, signupUser, updateUser } from '../controllers/userController';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
+router.get('/', getUsers);
 router.post('/login', loginUser);
 router.post('/signup', signupUser);
-router.get('/', getUsers);
+
+// ✅ NEW: protected profile update
+router.put('/update', authenticateToken, updateUser);
 
 export default router;

@@ -90,3 +90,42 @@ export const signupUser = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ message: 'Signup error', error: err.message || String(err) });
   }
 };
+
+// Update user profile
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.id; // assuming JWT middleware adds user
+    if (!userId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const { name, dateOfBirth, gender } = req.body;
+
+    const validGenders = ['male', 'female', 'other'];
+    if (gender && !validGenders.includes(gender)) {
+      res.status(400).json({ message: 'Invalid gender' });
+      return;
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...(name && { name }),
+        ...(dateOfBirth && { date_of_birth: new Date(dateOfBirth) }),
+        ...(gender && { gender }),
+      },
+      { new: true }
+    ).select('-password_hash');
+
+    if (!updated) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error('Update error:', err);
+    res.status(500).json({ message: 'Update error', error: err.message });
+  }
+};
