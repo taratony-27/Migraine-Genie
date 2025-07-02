@@ -10,8 +10,9 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const isLoggedIn = !!localStorage.getItem('token'); // ✅ check token presence
-  const isHome = location.pathname === "/";
+  const isLoggedIn = !!localStorage.getItem('token');
+  const isHome = location.pathname === '/';
+  const isDashboard = location.pathname === '/dashboard';
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -24,6 +25,13 @@ const Header: React.FC = () => {
   const goToAccount = () => {
     handleMenuClose();
     navigate('/account');
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    handleMenuClose();
+    navigate('/');
   };
 
   return (
@@ -43,7 +51,12 @@ const Header: React.FC = () => {
             Sign Up
           </Button>
         ) : isLoggedIn ? (
-          <Box>
+          <Box display="flex" alignItems="center" gap={2}>
+            {!isDashboard && (
+              <Button variant="contained" color="primary" onClick={() => navigate('/dashboard')}>
+                Go To App
+              </Button>
+            )}
             <IconButton onClick={handleMenuOpen}>
               <Avatar src="/profile.jpg" />
             </IconButton>
@@ -54,16 +67,7 @@ const Header: React.FC = () => {
             >
               <MenuItem onClick={goToAccount}>Account</MenuItem>
               <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
-              <MenuItem
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('user');
-                  handleMenuClose();
-                  navigate('/');
-                }}
-              >
-                Logout
-              </MenuItem>
+              <MenuItem onClick={logout}>Logout</MenuItem>
             </Menu>
           </Box>
         ) : null}

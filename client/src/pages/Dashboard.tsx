@@ -84,7 +84,7 @@ const Dashboard: React.FC = () => {
       <Container maxWidth="lg" sx={{ mb: 4 }}>
         <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
           <Typography variant="h4" fontWeight="bold">
-            Dashboard
+            Hello, {localStorage.getItem("name") || "User"}
           </Typography>
         </Box>
       </Container>
