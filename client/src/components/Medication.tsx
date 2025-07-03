@@ -75,14 +75,33 @@ const Medication: React.FC = () => {
         justifyContent="center"
         alignItems="center"
       >
-        <Typography variant="h5" fontWeight="bold" textAlign="center">
+      <Box
+        sx={{
+          flex: 1, // Take up available space
+          display: 'flex',
+          justifyContent: { xs: 'flex-start', sm: 'center' }, // Left on small, center on larger
+        }}
+      >
+        <Typography variant="h5" fontWeight="bold" textAlign="center" 
+        sx={{
+          fontSize: { xs: '1.2rem', sm: '1.8rem', md: '2rem' },// Adjust font size for different screen sizes
+        }}>
           Medication
         </Typography>
+      </Box>
 
         <Button
           variant="outlined"
           size="small"
-          sx={{ position: 'absolute', right: 0 }}
+          //sx={{ position: 'absolute', right: 0 }}
+          sx={{
+            position: 'absolute', 
+            right: 0,
+            width: { xs: '80px', sm: 'fit-content' }, // Smaller width for phones, fit-content for larger screens
+            fontSize: { xs: '0.5rem', sm: '1rem' }, // Smaller font size for phones
+            padding: { xs: '3px 7px', sm: '6px 12px' }, // Adjust padding for smaller screens
+            whiteSpace: 'nowrap',
+          }}
           onClick={() => setShowHistory((prev) => !prev)}
         >
           {showHistory ? 'Hide History' : 'View History'}
