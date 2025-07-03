@@ -20,15 +20,15 @@ import DailyPredictions from '../components/DailyPredictions';
 import Medication from '../components/Medication';
 import WellnessProgram from '../components/WelnessProgram';
 import AIAssistant from '../components/AIAssistant';
-import MonitoringReport from '../components/MonitoringReport';
+import Visualization from '../components/Visualization'; //Need to change
 
 const tabs = [
-  'Daily Trigger Prediction',
+  'Trigger Prediction',
   'Daily Log',
   'Wellness Program',
   'Medication',
   'AI Assistant',
-  'Symptom and Trigger Monitoring Report'
+  'Visualization Report'
 ];
 
 const Dashboard: React.FC = () => {
@@ -61,9 +61,9 @@ const Dashboard: React.FC = () => {
         return <Medication />;
       case 'AI Assistant':
         return <AIAssistant />;
-      case 'Symptom and Trigger Monitoring Report':
-        return <MonitoringReport />;
-      case 'Daily Trigger Prediction':
+      case 'Visualization Report':
+        return <Visualization />;
+      case 'Trigger Prediction':
       default:
         return <DailyPredictions />;
     }
@@ -84,7 +84,7 @@ const Dashboard: React.FC = () => {
       <Container maxWidth="lg" sx={{ mb: 4 }}>
         <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
           <Typography variant="h4" fontWeight="bold">
-            Dashboard
+            Hello, {localStorage.getItem("name") || "User"}
           </Typography>
         </Box>
       </Container>

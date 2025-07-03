@@ -6,7 +6,7 @@ import Footer from './Footer';
 interface LayoutProps {
   children: React.ReactNode;
 }
-
+//If it is home page, dont show Header
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <Box display="flex" flexDirection="column" minHeight="100dvh">

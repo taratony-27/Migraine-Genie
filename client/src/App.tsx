@@ -3,12 +3,12 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import DailyLog from './components/DailyLog';
-import Profile from './pages/Profile';
+import Account from './pages/Account';
 import Baseline from './pages/Baseline';
 import WellnessProgram from './components/WelnessProgram';
 import AIAssistant from './components/AIAssistant';
-import MonitoringReport from './components/MonitoringReport';
-import Layout from './components/Layout'; // ✅ Corrected import
+import Visualization from './components/Visualization';
+import Layout from './components/Layout';
 
 const App: React.FC = () => {
   return (
@@ -18,11 +18,11 @@ const App: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/daily-log" element={<DailyLog />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route path="/account" element={<Account />} />
           <Route path="/baseline" element={<Baseline />} />
           <Route path="/wellness-program" element={<WellnessProgram />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
-          <Route path="/monitoring-report" element={<MonitoringReport />} />
+          <Route path="/visualization" element={<Visualization />} />
         </Routes>
       </Layout>
     </Router>

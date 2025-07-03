@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, Typography, Button, IconButton, Menu, MenuItem, Avatar, Box } from '@mui/material';
-import { useLocation, useNavigate } from 'react-router-dom'; // 👈 Add useNavigate
+import {
+  AppBar, Toolbar, Typography, Button, IconButton,
+  Menu, MenuItem, Avatar, Box
+} from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Header: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate(); // 👈 Initialize navigate
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const isLoggedIn = !!localStorage.getItem('token');
+  const isHome = location.pathname === '/';
+  const isDashboard = location.pathname === '/dashboard';
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -15,7 +22,17 @@ const Header: React.FC = () => {
     setAnchorEl(null);
   };
 
-  const isHome = location.pathname === "/";
+  const goToAccount = () => {
+    handleMenuClose();
+    navigate('/account');
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    handleMenuClose();
+    navigate('/');
+  };
 
   return (
     <AppBar position="static" color="transparent" elevation={0}>
@@ -23,21 +40,23 @@ const Header: React.FC = () => {
         <Typography
           variant="h6"
           fontWeight="bold"
-          onClick={() => navigate('/')} // 👈 Redirect to Home on click
-          sx={{
-            cursor: 'pointer', // 👈 Make it obvious it's clickable
-            userSelect: 'none', // optional: prevent text highlight
-          }}
+          onClick={() => navigate('/')}
+          sx={{ cursor: 'pointer', userSelect: 'none' }}
         >
           MigraineGenie
         </Typography>
 
-        {isHome ? (
-          <Button variant="contained" color="primary">
+        {isHome && !isLoggedIn ? (
+          <Button variant="contained" color="primary" onClick={() => navigate('/')}>
             Sign Up
           </Button>
-        ) : (
-          <Box>
+        ) : isLoggedIn ? (
+          <Box display="flex" alignItems="center" gap={2}>
+            {!isDashboard && (
+              <Button variant="contained" color="primary" onClick={() => navigate('/dashboard')}>
+                Go To App
+              </Button>
+            )}
             <IconButton onClick={handleMenuOpen}>
               <Avatar src="/profile.jpg" />
             </IconButton>
@@ -46,13 +65,12 @@ const Header: React.FC = () => {
               open={Boolean(anchorEl)}
               onClose={handleMenuClose}
             >
-              <MenuItem onClick={handleMenuClose}>Account</MenuItem>
-              <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
+              <MenuItem onClick={goToAccount}>Account</MenuItem>
               <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
-              <MenuItem onClick={handleMenuClose}>Logout</MenuItem>
+              <MenuItem onClick={logout}>Logout</MenuItem>
             </Menu>
           </Box>
-        )}
+        ) : null}
       </Toolbar>
     </AppBar>
   );

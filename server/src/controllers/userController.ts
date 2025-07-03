@@ -1,24 +1,131 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import User from '../models/User';
 
-// GET, POST, PUT, DELETE
-
 // Get all users
-export const getUsers = async (req: Request, res: Response) => {
+export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const users = await User.find();
     res.json(users);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching users:', error);
-    res.status(500).json({ message: 'Server error', error });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// Update user
+// User Login
+export const loginUser = async (req: Request, res: Response): Promise<void> => {
+  const { email, password } = req.body;
 
+  try {
+    if (!email || !password) {
+      res.status(400).json({ message: 'Email and password are required' });
+      return;
+    }
 
-// Delete user (Start)
+    const user = await User.findOne({ email });
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
 
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
+    }
 
-// Create/Post user
+    const token = jwt.sign({ id: user._id }, 'secretkey', { expiresIn: '1d' });
 
+    res.json({ token, user });
+  } catch (err: any) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Login error', error: err.message || String(err) });
+  }
+};
+
+// User Signup
+export const signupUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('📩 Signup request received:', req.body);
+
+    const { name, email, password, date_of_birth, gender } = req.body;
+
+    // Basic validation
+    if (!name || !email || !password || !date_of_birth || !gender) {
+      res.status(400).json({ message: 'All fields are required' });
+      return;
+    }
+
+    const validGenders = ['male', 'female', 'other'];
+    if (!validGenders.includes(gender)) {
+      res.status(400).json({ message: 'Invalid gender value' });
+      return;
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      res.status(409).json({ message: 'Email already in use' });
+      return;
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      user_id: Date.now(),
+      name,
+      email,
+      password_hash,
+      date_of_birth: new Date(date_of_birth),
+      gender
+    });
+
+    const savedUser = await newUser.save();
+    console.log('✅ New user created:', savedUser);
+
+    res.status(201).json(savedUser);
+  } catch (err: any) {
+    console.error('❌ Signup error:', err);
+    res.status(500).json({ message: 'Signup error', error: err.message || String(err) });
+  }
+};
+
+// Update user profile
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.id; // assuming JWT middleware adds user
+    if (!userId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const { name, dateOfBirth, gender } = req.body;
+
+    const validGenders = ['male', 'female', 'other'];
+    if (gender && !validGenders.includes(gender)) {
+      res.status(400).json({ message: 'Invalid gender' });
+      return;
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...(name && { name }),
+        ...(dateOfBirth && { date_of_birth: new Date(dateOfBirth) }),
+        ...(gender && { gender }),
+      },
+      { new: true }
+    ).select('-password_hash');
+
+    if (!updated) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error('Update error:', err);
+    res.status(500).json({ message: 'Update error', error: err.message });
+  }
+};
