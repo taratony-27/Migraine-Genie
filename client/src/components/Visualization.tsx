@@ -37,7 +37,7 @@ const Visualization: React.FC = () => {
   const [entries, setEntries] = useState<any[]>([]);
 
   useEffect(() => {
-    axios.get('http://localhost:3001/api/daily-inputs')
+    axios.get('http://localhost:3001/api/daily-inputs/')
       .then(res => setEntries(res.data))
       .catch(err => console.error('Fetch failed:', err));
   }, []);

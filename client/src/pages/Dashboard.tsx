@@ -23,7 +23,7 @@ import AIAssistant from '../components/AIAssistant';
 import Visualization from '../components/Visualization'; //Need to change
 
 const tabs = [
-  'Daily Trigger Prediction',
+  'Trigger Prediction',
   'Daily Log',
   'Wellness Program',
   'Medication',
@@ -63,7 +63,7 @@ const Dashboard: React.FC = () => {
         return <AIAssistant />;
       case 'Visualization Report':
         return <Visualization />;
-      case 'Daily Trigger Prediction':
+      case 'Trigger Prediction':
       default:
         return <DailyPredictions />;
     }
