@@ -51,46 +51,53 @@ const Home: React.FC = () => {
       {/* Hero Section */}
       <Box sx={{ flexGrow: 1, py: 4 }}>
         <Container
-          maxWidth="lg"
-          sx={{
-            minHeight: '80vh',
-            display: 'flex',
-            flexDirection: isMobile || !isLoggedIn ? 'column' : 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: isMobile || !isLoggedIn ? 'center' : 'left'
-          }}
-        >
-          {/* Welcome Text */}
-          <Box
-            flex={isLoggedIn ? 1 : 'unset'}
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            textAlign="center"
-            sx={{
-              mb: isLoggedIn ? 0 : 4,
-              width: isLoggedIn ? '100%' : 'auto',
-              minHeight: isLoggedIn ? '60vh' : 'auto'
-            }}
-          >
-            <Typography variant="h3" fontWeight="bold" color="#1565c0">
-              Welcome to Migraine Genie
-            </Typography>
-            <Typography variant="body1" color="textSecondary" sx={{ mt: 2, maxWidth: 500 }}>
-              Your personalized migraine relief assistant. Track symptoms, get tailored recommendations,
-              and take control of your migraine management journey.
-            </Typography>
-          </Box>
+  maxWidth="lg"
+  sx={{
+    minHeight: '80vh',
+    display: 'flex',
+    flexDirection: isMobile || isLoggedIn ? 'column' : 'row', // logged-out users on desktop => 'row'
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: isMobile || isLoggedIn ? 'center' : 'left',
+    gap: 6,
+  }}
+>
+  {/* Welcome Text */}
+  <Box
+    flex={1}
+    display="flex"
+    flexDirection="column"
+    justifyContent="center"
+    alignItems={isMobile || isLoggedIn ? 'center' : 'flex-start'}
+    textAlign={isMobile || isLoggedIn ? 'center' : 'left'}
+  >
+    <Typography variant="h3" fontWeight="bold" color="#1565c0">
+      Welcome to Migraine Genie
+    </Typography>
+    <Typography
+      variant="body1"
+      color="textSecondary"
+      sx={{ mt: 2, maxWidth: 500 }}
+    >
+      Your personalized migraine relief assistant. Track symptoms, get tailored
+      recommendations, and take control of your migraine management journey.
+    </Typography>
+      </Box>
 
-          {/* Auth Form (Login / Signup) */}
-          {!isLoggedIn && (
-            <Box flex={1} display="flex" justifyContent="center" alignItems="center">
-              <Auth />
-            </Box>
-          )}
-        </Container>
+      {/* Auth Form (Login / Signup) */}
+      {!isLoggedIn && (
+        <Box
+          flex={1}
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          width="100%"
+        >
+          <Auth />
+        </Box>
+      )}
+    </Container>
+
       </Box>
 
       {/* About Us */}
