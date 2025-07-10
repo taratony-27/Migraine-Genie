@@ -19,7 +19,12 @@ const triggers = [
   'Certain foods', 'Weather', 'Bright lights', 'Noise'
 ];
 
-const problemOptions = ['No problem', 'Mild problem', 'Moderate problem', 'Severe problem'];
+const problemOptions = [
+  { label: "No problem", value: 0 },
+  { label: "Mild problem", value: 1 },
+  { label: "Moderate problem", value: 2 },
+  { label: "Severe problem", value: 3 }
+];
 
 const symptomInputs = [
   { key: 'imbalance', label: 'Imbalance', type: 'slider' },
@@ -578,7 +583,10 @@ const DailyLog: React.FC = () => {
                     <Slider
                       name={key}
                       value={parseInt(entry[key]) || 0}
-                      onChange={(_, val) => setEntry((prev: typeof entry) => ({ ...prev, [key]: String(val) }))}
+                      onChange={(_, val) => {
+                        const numericValue = Number(val);
+                        setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
+                      }}
                       step={1}
                       min={0}
                       max={3}
@@ -602,8 +610,11 @@ const DailyLog: React.FC = () => {
                       onChange={handleChange}
                     >
                       {problemOptions.map(opt => (
-                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
                       ))}
+
                     </TextField>
                   ) : type === 'radio' ? (
                     <Box 
@@ -614,13 +625,16 @@ const DailyLog: React.FC = () => {
                     <RadioGroup
                       name={key}
                       value={entry[key]}
-                      onChange={handleChange}
+                      onChange={(_, val) => {
+                        const numericValue = Number(val);
+                        setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
+                      }}
                       sx={{
                       flexDirection: { xs: 'column', sm: 'row', lg: 'row' } // Vertical for phones, horizontal for laptops
                       }}
                     >
                       {problemOptions.map(opt => (
-                      <FormControlLabel key={opt} value={opt} control={<Radio />} label={opt} />
+                      <FormControlLabel key={opt.value} value={opt.value} control={<Radio />} label={opt.label} />
                       ))}
                     </RadioGroup>
                     </Box>
@@ -628,12 +642,17 @@ const DailyLog: React.FC = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={entry[key] === 'Yes'}
-                          onChange={e => setEntry((prev: typeof entry) => ({ ...prev, [key]: e.target.checked ? 'Yes' : 'No' }))}
+                          checked={entry[key] === 1}
+                          onChange={e =>
+                            setEntry((prev: typeof entry) => ({
+                              ...prev,
+                              [key]: e.target.checked ? 1 : 0
+                            }))
+                          }
                           name={key}
                         />
                       }
-                      label={entry[key] === 'Yes' ? 'Yes' : 'No'}
+                      label={entry[key] === 1 ? 'Yes' : 'No'}
                     />
                   ) : null}
                 </FormControl>

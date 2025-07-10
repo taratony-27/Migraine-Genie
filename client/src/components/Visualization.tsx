@@ -4,12 +4,14 @@ import {
   Box,
   Typography,
   Paper,
-  Grid
+  Grid,
+  Button
 } from '@mui/material';
 import {
   Bar,
   Line
 } from 'react-chartjs-2';
+import Heatmap from '@nivo/heatmap'; // Example: Replace with the actual library name you intend to use
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -21,6 +23,13 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import { DateCalendar, PickersDay } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { styled } from '@mui/material/styles';
+import dayjs from 'dayjs';
+import { HeatMap } from '@nivo/heatmap';
+import { number } from 'framer-motion';
 
 ChartJS.register(
   CategoryScale,
@@ -32,7 +41,6 @@ ChartJS.register(
   Tooltip,
   Legend
 );
-
 const Visualization: React.FC = () => {
   const [entries, setEntries] = useState<any[]>([]);
 
@@ -90,6 +98,57 @@ const Visualization: React.FC = () => {
     }],
   };
 
+  const [currentMonth, setCurrentMonth] = useState(dayjs()); // Default to current month
+  const startOfMonth = currentMonth.startOf('month');
+  const endOfMonth = currentMonth.endOf('month');
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // build calendar days
+  const calendarDays: (dayjs.Dayjs | null)[] = [];
+  const startDayIndex = startOfMonth.day();
+  for (let i = 0; i < startDayIndex; i++) {
+    calendarDays.push(null); 
+  }
+  for (let d = 1; d <= endOfMonth.date(); d++) {
+    calendarDays.push(dayjs(new Date(currentMonth.year(), currentMonth.month(), d)));
+  }
+
+  // convert symptoms to severity
+  const severityByDate: Record<string, number> = {};
+  // Handlers for navigating months
+  const handlePreviousMonth = () => {
+    setCurrentMonth((prev) => prev.subtract(1, 'month'));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth((prev) => prev.add(1, 'month'));
+  };
+  entries.forEach((entry: any) => {
+    const date = new Date(entry.log_date).toISOString().split('T')[0];
+    const symptoms = entry.symptoms || {};
+    const totalSeverity = Object.values(symptoms)
+    .map((val: any) => {
+      // Most values are already numbers (0, 1, 2, 3)
+      if (typeof val === 'number') {
+        return val;
+      }
+      // Default fallback
+      return 0;
+    })
+      .reduce((sum: number, val: number) => sum + val, 0);
+
+    severityByDate[date] = (severityByDate[date] || 0) + totalSeverity;
+    console.log(`Date: ${date}, Total Severity: ${totalSeverity}, Symptoms:`, symptoms);
+  });
+
+  const getHeatColor = (intensity: number) => {
+    if (intensity === 0) return '#dadada';     // None
+    if (intensity <= 10) return '#cadeef';     // Mild
+    if (intensity <= 20) return '#9bd4e4';     // Moderate
+    if (intensity <= 35) return '#39ace7';     // Severe
+    return '#0784b5';                          // Extreme
+  };
+
   return (
     <Box display="flex" flexDirection="column" width="100%" px={{ xs: 1, sm: 2 }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -116,6 +175,135 @@ const Visualization: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      <Typography variant="h6" fontWeight="bold" gutterBottom>
+  Symptom Intensity Calendar Heatmap
+</Typography>
+
+<Paper sx={{ p: 2, mb: 4 }}>
+   {/* Month Navigation */}
+   <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Button variant="outlined" onClick={handlePreviousMonth}>
+            Previous Month
+          </Button>
+          <Typography variant="h6" fontWeight="bold">
+            {currentMonth.format('MMMM YYYY')}
+          </Typography>
+          <Button variant="outlined" onClick={handleNextMonth}>
+            Next Month
+          </Button>
+        </Grid>
+
+        {/* Weekday Headers */}
+        <Grid container spacing={1}>
+          {weekDays.map((day) => (
+            <Grid item xs={1.71} key={day}>
+              <Typography variant="caption" fontWeight="bold">
+                {day}
+              </Typography>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* Calendar Days */}
+        <Grid container spacing={1}>
+          {calendarDays.map((day, idx) => {
+            if (!day) return <Grid item xs={1.71} key={`empty-${idx}`} />;
+            const dateStr = day.format('YYYY-MM-DD');
+            const severity = severityByDate[dateStr] || 0;
+            return (
+              <Grid item xs={1.71} key={dateStr}>
+                <Paper
+                  sx={{
+                    backgroundColor: getHeatColor(severity), // ✅ uses color based on severity
+                    height: 40,
+                    width: 40,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Typography variant="caption">{day.date()}</Typography>
+                </Paper>
+              </Grid>
+            );
+          })}
+        </Grid>
+        {/* Heatmap Legend */}
+  <Box mt={2}>
+    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+      Legend
+    </Typography>
+    <Grid container spacing={1} alignItems="center">
+      <Grid item xs={2}>
+        <Box
+          sx={{
+            backgroundColor: '#dadada',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+          }}
+        />
+        <Typography variant="caption" ml={1}>
+          No Severity
+        </Typography>
+      </Grid>
+      <Grid item xs={2}>
+        <Box
+          sx={{
+            backgroundColor: '#cadeef',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+          }}
+        />
+        <Typography variant="caption" ml={1}>
+        Mild (1–10)
+        </Typography>
+      </Grid>
+      <Grid item xs={2}>
+        <Box
+          sx={{
+            backgroundColor: '#9bd4e4',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+          }}
+        />
+        <Typography variant="caption" ml={1}>
+        Moderate (11–20)
+        </Typography>
+      </Grid>
+      <Grid item xs={2}>
+        <Box
+          sx={{
+            backgroundColor: '#39ace7',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+          }}
+        />
+        <Typography variant="caption" ml={1}>
+        Severe (21–35)
+        </Typography>
+      </Grid>
+      <Grid item xs={2}>
+        <Box
+          sx={{
+            backgroundColor: '#0784b5',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+          }}
+        />
+        <Typography variant="caption" ml={1}>
+        Extreme (36+)
+        </Typography>
+      </Grid>
+    </Grid>
+  </Box>
+
+</Paper>
 
       <Typography variant="h5" fontWeight="bold" gutterBottom>
         Entry List
@@ -146,5 +334,4 @@ const Visualization: React.FC = () => {
     </Box>
   );
 };
-
 export default Visualization;
