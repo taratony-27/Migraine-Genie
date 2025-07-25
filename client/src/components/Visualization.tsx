@@ -5,8 +5,10 @@ import {
   Typography,
   Paper,
   Grid,
-  Button
+  Button,
+  Tooltip,
 } from '@mui/material';
+
 import {
   Bar,
   Line
@@ -20,7 +22,6 @@ import {
   PointElement,
   LineElement,
   Title,
-  Tooltip,
   Legend
 } from 'chart.js';
 import { DateCalendar, PickersDay } from '@mui/x-date-pickers';
@@ -38,7 +39,6 @@ ChartJS.register(
   PointElement,
   LineElement,
   Title,
-  Tooltip,
   Legend
 );
 const Visualization: React.FC = () => {
@@ -180,16 +180,35 @@ const Visualization: React.FC = () => {
   Symptom Intensity Calendar Heatmap
 </Typography>
 
-<Paper sx={{ p: 2, mb: 4 }}>
+<Paper 
+  sx={{
+    p: { xs: 1, sm: 2 }, // Smaller padding for phones
+    mb: { xs: 2, sm: 4 }, // Adjust margin for phones
+  }}
+>
    {/* Month Navigation */}
    <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-          <Button variant="outlined" onClick={handlePreviousMonth}>
+          <Button variant="outlined" 
+          sx={{
+          fontSize: { xs: '0.5rem', sm: '0.9rem' }, // Smaller font size for phones
+          padding: { xs: '1px 5px', sm: '6px 12px' }, // Adjust button padding
+        }}
+        onClick={handlePreviousMonth}>
             Previous Month
           </Button>
-          <Typography variant="h6" fontWeight="bold">
+          <Typography variant="h6" fontWeight="bold"
+            sx={{
+              fontSize: { xs: '0.8rem', sm: '1.25rem' }, // Smaller font size for phones
+            }}
+          >
             {currentMonth.format('MMMM YYYY')}
           </Typography>
-          <Button variant="outlined" onClick={handleNextMonth}>
+          <Button variant="outlined" 
+            sx={{
+              fontSize: { xs: '0.5rem', sm: '0.9rem' },
+              padding: { xs: '1px 5px', sm: '6px 12px' },
+            }}
+          onClick={handleNextMonth}>
             Next Month
           </Button>
         </Grid>
@@ -198,7 +217,11 @@ const Visualization: React.FC = () => {
         <Grid container spacing={1}>
           {weekDays.map((day) => (
             <Grid item xs={1.71} key={day}>
-              <Typography variant="caption" fontWeight="bold">
+              <Typography variant="caption" fontWeight="bold"
+                sx={{
+                  fontSize: { xs: '0.6rem', sm: '0.8rem' }, // Smaller font size for phones
+                }}
+                >
                 {day}
               </Typography>
             </Grid>
@@ -213,38 +236,63 @@ const Visualization: React.FC = () => {
             const severity = severityByDate[dateStr] || 0;
             return (
               <Grid item xs={1.71} key={dateStr}>
-                <Paper
-                  sx={{
-                    backgroundColor: getHeatColor(severity), // ✅ uses color based on severity
-                    height: 40,
-                    width: 40,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Typography variant="caption">{day.date()}</Typography>
-                </Paper>
+                <Tooltip title={`Intensity Sum: ${severity}`} arrow>
+                  <Paper
+                    sx={{
+                      backgroundColor: getHeatColor(severity), // ✅ uses color based on severity
+                      height: { xs: 30, sm: 40 }, // Smaller height for phones
+                      width: { xs: 30, sm: 40 }, // Smaller width for phones
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Typography variant="caption"
+                      sx={{
+                        fontSize: { xs: '0.6rem', sm: '0.8rem' }, // Smaller font size for phones
+                      }}
+                    >{day.date()}</Typography>
+                  </Paper>
+                </Tooltip>
               </Grid>
             );
           })}
         </Grid>
         {/* Heatmap Legend */}
   <Box mt={2}>
-    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+    <Typography variant="subtitle1" fontWeight="bold" gutterBottom
+      sx={{
+        fontSize: { xs: '0.8rem', sm: '1rem' }, // Smaller font size for phones
+      }}
+    >
       Legend
     </Typography>
-    <Grid container spacing={1} alignItems="center">
+    <Grid container 
+    rowSpacing={2} 
+    columnSpacing={3} 
+    alignItems="center"
+    justifyContent="space-between" 
+    sx={{
+      flexWrap: 'wrap', 
+    }}
+    >
       <Grid item xs={2}>
-        <Box
+        <Box 
           sx={{
             backgroundColor: '#dadada',
-            width: 20,
-            height: 20,
+            width: { xs: 15, sm: 20 }, 
+            height: { xs: 15, sm: 20 }, 
             borderRadius: '50%',
+            mr: { xs: 0.3, sm: 0.6 },
           }}
         />
-        <Typography variant="caption" ml={1}>
+        <Typography variant="caption" ml={1}
+          sx={{
+            fontSize: { xs: '0.4rem', sm: '0.8rem' },
+            whiteSpace: 'nowrap',
+            ml: -0.4
+          }}
+        >
           No Severity
         </Typography>
       </Grid>
@@ -252,52 +300,80 @@ const Visualization: React.FC = () => {
         <Box
           sx={{
             backgroundColor: '#cadeef',
-            width: 20,
-            height: 20,
+            width: { xs: 15, sm: 20 },
+            height: { xs: 15, sm: 20 },
             borderRadius: '50%',
+            mr: { xs: 0.3, sm: 0.6 },
           }}
         />
-        <Typography variant="caption" ml={1}>
-        Mild (1–10)
+        <Typography variant="caption" ml={1}
+          sx={{
+            fontSize: { xs: '0.4rem', sm: '0.8rem' },
+            whiteSpace: 'nowrap',
+            ml: -0.4
+          }}
+        >
+        Mild(1–10)
         </Typography>
       </Grid>
       <Grid item xs={2}>
         <Box
           sx={{
             backgroundColor: '#9bd4e4',
-            width: 20,
-            height: 20,
+            width: { xs: 15, sm: 20 },
+            height: { xs: 15, sm: 20 },
             borderRadius: '50%',
+            mr: { xs: 0.3, sm: 0.6 },
           }}
         />
-        <Typography variant="caption" ml={1}>
-        Moderate (11–20)
+        <Typography variant="caption" ml={1}
+          sx={{
+            fontSize: { xs: '0.4rem', sm: '0.8rem' },
+            whiteSpace: 'nowrap',
+            ml: -0.4
+          }}
+        >
+        Moderate(11–20)
         </Typography>
       </Grid>
       <Grid item xs={2}>
         <Box
           sx={{
             backgroundColor: '#39ace7',
-            width: 20,
-            height: 20,
+            width: { xs: 15, sm: 20 },
+            height: { xs: 15, sm: 20 },
             borderRadius: '50%',
+            mr: { xs: 0.3, sm: 0.6 },
           }}
         />
-        <Typography variant="caption" ml={1}>
-        Severe (21–35)
+        <Typography variant="caption" ml={1}
+          sx={{
+            fontSize: { xs: '0.4rem', sm: '0.8rem' },
+            whiteSpace: 'nowrap',
+            ml: -0.4
+          }}
+        >
+        Severe(21–35)
         </Typography>
       </Grid>
       <Grid item xs={2}>
         <Box
           sx={{
             backgroundColor: '#0784b5',
-            width: 20,
-            height: 20,
+            width: { xs: 15, sm: 20 },
+            height: { xs: 15, sm: 20 },
             borderRadius: '50%',
+            mr: { xs: 0.3, sm: 0.6 },
           }}
         />
-        <Typography variant="caption" ml={1}>
-        Extreme (36+)
+        <Typography variant="caption" ml={1}
+          sx={{
+            fontSize: { xs: '0.4rem', sm: '0.8rem' },
+            whiteSpace: 'nowrap',
+            ml: -0.4
+          }}
+        >
+        Extreme(36+)
         </Typography>
       </Grid>
     </Grid>
