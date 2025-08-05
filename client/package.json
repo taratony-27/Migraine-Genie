@@ -8,7 +8,7 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.0",
     "@mui/material": "^6.4.0",
-    "@mui/x-date-pickers": "^8.7.0",
+    "@mui/x-date-pickers": "^8.9.0",
     "@nivo/heatmap": "^0.99.0",
     "@svgr/plugin-svgo": "^8.1.0",
     "@svgr/webpack": "^8.1.0",
