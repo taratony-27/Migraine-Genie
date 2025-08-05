@@ -14,10 +14,6 @@ import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import GrainIcon from '@mui/icons-material/Grain';
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
-const triggers = [
-  'Stress', 'Lack of sleep', 'Dehydration', 'Hormonal changes',
-  'Certain foods', 'Weather', 'Bright lights', 'Noise'
-];
 
 const problemOptions = [
   { label: "No problem", value: 0 },
@@ -59,10 +55,23 @@ const DailyLog: React.FC = () => {
     date: '',
     duration: '',
     intensity: '',
-    trigger: '',
+    sleep: '',
+    screentime: '',
     notes: '',
     ...Object.fromEntries(symptomInputs.map(({ key }) => [key, '']))
   });
+
+  const [potentialTriggers, setPotentialTriggers] = useState<string[]>([]);
+  const handlePotentialTrigger = (
+    event: React.MouseEvent<HTMLElement>,
+    newPotentialTriggers: string[]
+  ) => {
+    setPotentialTriggers(newPotentialTriggers);
+    setEntry((prev: any) => ({
+      ...prev,
+      trigger: newPotentialTriggers.join(', '),
+    }));
+  };
 
   const [weatherTriggers, setWeatherTriggers] = useState<string[]>([]);
   const handleWeatherTrigger = (
@@ -86,6 +95,17 @@ const DailyLog: React.FC = () => {
       trigger: newFoodTriggers.join(', '),
     }));
   };
+  const [activityTriggers, setActivityTriggers] = useState<string[]>([]);
+  const handleActivityTrigger = (
+    event: React.MouseEvent<HTMLElement>,
+    newActivityTriggers: string[]
+  ) => {
+    setActivityTriggers(newActivityTriggers);
+    setEntry((prev: any) => ({
+      ...prev,
+      trigger: newActivityTriggers.join(', '),
+    }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -94,7 +114,7 @@ const DailyLog: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const { date, duration, intensity, trigger, notes, ...symptoms } = entry;
+      const { date, duration, intensity, sleep, screentime, notes, ...symptoms } = entry;
 
       const payload = {
         log_id: Math.floor(Math.random() * 100000),
@@ -102,7 +122,8 @@ const DailyLog: React.FC = () => {
         log_date: date,
         duration,
         intensity,
-        trigger,
+        sleep,
+        screentime,
         notes,
         created_at: new Date().toISOString(),
         symptoms
@@ -172,7 +193,8 @@ const DailyLog: React.FC = () => {
                 <Typography variant="subtitle2">Date: {log.log_date?.substring(0, 10)}</Typography>
                 <Typography variant="body2">Duration: {log.duration} hours</Typography>
                 <Typography variant="body2">Intensity: {log.intensity}</Typography>
-                <Typography variant="body2">Trigger: {log.trigger}</Typography>
+                <Typography variant="body2">Sleep: {log.sleep}</Typography>
+                <Typography variant="body2">Screentime: {log.screentime}</Typography>
                 <Typography variant="body2">Notes: {log.notes || '-'}</Typography>
               </Box>
             ))
@@ -211,21 +233,241 @@ const DailyLog: React.FC = () => {
                   <MenuItem key={level} value={level}>{level}</MenuItem>
                 ))}
               </TextField>
-
-              <TextField
-                select
-                label="Trigger"
-                fullWidth
-                name="trigger"
-                value={entry.trigger}
-                onChange={handleChange}
+              <Typography variant="subtitle2"
+                sx={{
+                  fontSize: '1rem' , 
+                }}
               >
-                {triggers.map(trigger => (
-                  <MenuItem key={trigger} value={trigger}>{trigger}</MenuItem>
-                ))}
-              </TextField>
+                Sleep (hours)
+              </Typography>
+              <Slider
+                name="sleepHours"
+                value={entry.sleepHours || 0}
+                onChange={(_, val) => {
+                  const numericValue = Number(val);
+                  setEntry((prev: any) => ({ ...prev, sleepHours: numericValue }));
+                }}
+                step={1}
+                min={0}
+                max={12}
+                marks={[
+                  { value: 0, label: '0' },
+                  { value: 1, label: '1' },
+                  { value: 2, label: '2' },
+                  { value: 3, label: '3' },
+                  { value: 4, label: '4' },
+                  { value: 5, label: '5' },
+                  { value: 6, label: '6' },
+                  { value: 7, label: '7' },
+                  { value: 8, label: '8' },
+                  { value: 9, label: '9' },
+                  { value: 10, label: '10' },
+                  { value: 11, label: '11' },
+                  { value: 12, label: '12' },
+                ]}
+                sx={{
+                  width: { xs: '90%', md: '90%' },
+                  height: { xs: 4, md: 8 },
+                }}
+              />
 
+              <Typography variant="subtitle2"
+                sx={{
+                  fontSize: '1rem' , 
+                }}
+              >
+                Screentime (hours)
+              </Typography>
+              <Slider
+                name="screentimeHours"
+                value={entry.screentimeHours || 0}
+                onChange={(_, val) => {
+                  const numericValue = Number(val);
+                  setEntry((prev: any) => ({ ...prev, screentimeHours: numericValue }));
+                }}
+                step={1}
+                min={0}
+                max={12}
+                marks={[
+                  { value: 0, label: '0' },
+                  { value: 1, label: '1' },
+                  { value: 2, label: '2' },
+                  { value: 3, label: '3' },
+                  { value: 4, label: '4' },
+                  { value: 5, label: '5' },
+                  { value: 6, label: '6' },
+                  { value: 7, label: '7' },
+                  { value: 8, label: '8' },
+                  { value: 9, label: '9' },
+                  { value: 10, label: '10' },
+                  { value: 11, label: '11' },
+                  { value: 12, label: '12' },
+                ]}
+                sx={{
+                  width: { xs: '90%', md: '90%' },
+                  height: { xs: 4, md: 8 },
+                }}
+              />
 
+<Typography variant="subtitle1" >
+      Potential Triggers
+    </Typography>
+    <ToggleButtonGroup
+      value={potentialTriggers}
+      onChange={handlePotentialTrigger}
+      aria-label="potential triggers"
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start', 
+      }}
+    >
+      <ToggleButton value="stress" aria-label="stress" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/stress.png"
+          alt="Stress"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Stress
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="lesssleep" aria-label="lesssleep" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/exhausted-man.png"
+          alt="Less Sleep"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Less Sleep
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="dehydration" aria-label="dehydration" 
+      sx={{
+        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
+        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/no-water.png"
+          alt="Dehydration"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Dehydration
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="hormonalchanges" aria-label="hormonalchanges" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/pad.png"
+          alt="Hormonal Changes"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Hormonal Changes
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="certainfoods" aria-label="certainfoods" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/restaurant.png"
+          alt="Certain Foods"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Certain Foods
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="weather" aria-label="weather" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/weather.png"
+          alt="Weather"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Weather
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="lights" aria-label="lights" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/lamp.png"
+          alt="Lights"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Bright Lights
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="noise" aria-label="noise" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/noise.png"
+          alt="Noise"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Noise
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="scents" aria-label="scents" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/perfume.png"
+          alt="Scents"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Strong Scents
+          </Typography>
+        </Box>
+      </ToggleButton>
+    </ToggleButtonGroup>
+    
     <Typography variant="subtitle1" >
       Weather
     </Typography>
@@ -563,6 +805,165 @@ const DailyLog: React.FC = () => {
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
             Foods with MSG
+          </Typography>
+        </Box>
+      </ToggleButton>
+    </ToggleButtonGroup>
+
+    <Typography variant="subtitle1" >
+      Activity
+    </Typography>
+    <ToggleButtonGroup
+      value={activityTriggers}
+      onChange={handleActivityTrigger}
+      aria-label="activity triggers"
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start', 
+      }}
+    >
+      <ToggleButton value="reading" aria-label="reading" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/book.png"
+          alt="Reading"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Reading
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="excersing" aria-label="excersing" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/running-excersice.png"
+          alt="Reading"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Excercising
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="traveling" aria-label="traveling" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/car.png"
+          alt="Traveling"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Traveling
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="socializing" aria-label="socializing" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/speak.png"
+          alt="Socializing"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Socializing
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="chores" aria-label="chores" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/sweeping.png"
+          alt="Chores"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Chores
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="shopping" aria-label="shopping" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/shopping-cart.png"
+          alt="Shopping"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Shopping
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="outside" aria-label="outside" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/park.png"
+          alt="Outside"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Time Outside
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="headphones" aria-label="headphones" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/headphones.png"
+          alt="Headphones"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Wearing Headphones
+          </Typography>
+        </Box>
+      </ToggleButton>
+      <ToggleButton value="crowd" aria-label="crowd" 
+      sx={{
+        width: { xs: 90, md: 100 }, 
+        height: { xs: 70, md: 75 }, 
+      }}>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+        <img
+          src="/icons/crowd-of-users.png"
+          alt="Crowd"
+          style={{ width: 24, height: 24 }}
+        />
+          <Typography variant="caption" sx={{ textTransform: 'none' }}>
+            Being in Crowds
           </Typography>
         </Box>
       </ToggleButton>

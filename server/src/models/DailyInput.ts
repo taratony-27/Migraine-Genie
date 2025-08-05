@@ -7,6 +7,8 @@ const DailyInputSchema = new mongoose.Schema({
   log_date: { type: Date, required: true },
   duration: { type: String },
   intensity: { type: String },
+  sleep: { type: Number },
+  screentime: { type: Number },
   trigger: { type: String },
   notes: { type: String },
   symptoms: {
