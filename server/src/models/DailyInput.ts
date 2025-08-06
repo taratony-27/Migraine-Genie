@@ -9,7 +9,12 @@ const DailyInputSchema = new mongoose.Schema({
   intensity: { type: String },
   sleep: { type: Number },
   screentime: { type: Number },
-  trigger: { type: String },
+  trigger: { 
+    potentialTrigger: { type: String },
+    weather: { type: String },
+    food: { type: String },
+    activity: { type: String },
+  },
   notes: { type: String },
   symptoms: {
     type: mongoose.Schema.Types.Mixed,  // allows storing any shape

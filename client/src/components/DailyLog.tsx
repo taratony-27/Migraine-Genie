@@ -51,15 +51,23 @@ const symptomInputs = [
 ];
 
 const DailyLog: React.FC = () => {
+
+  
   const [entry, setEntry] = useState<any>({
     date: '',
     duration: '',
     intensity: '',
     sleep: '',
     screentime: '',
+    potentialTrigger: '',
+    weather: '',
+    food: '',
+    activity: '',
+    ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
     notes: '',
-    ...Object.fromEntries(symptomInputs.map(({ key }) => [key, '']))
+    
   });
+  
 
   const [potentialTriggers, setPotentialTriggers] = useState<string[]>([]);
   const handlePotentialTrigger = (
@@ -69,7 +77,7 @@ const DailyLog: React.FC = () => {
     setPotentialTriggers(newPotentialTriggers);
     setEntry((prev: any) => ({
       ...prev,
-      trigger: newPotentialTriggers.join(', '),
+      potentialTrigger: newPotentialTriggers.join(', '),
     }));
   };
 
@@ -81,7 +89,7 @@ const DailyLog: React.FC = () => {
     setWeatherTriggers(newWeatherTriggers);
     setEntry((prev: any) => ({
       ...prev,
-      trigger: newWeatherTriggers.join(', '),
+      weather: newWeatherTriggers.join(', '),
     }));
   };
   const [foodTriggers, setFoodTriggers] = useState<string[]>([]);
@@ -92,7 +100,7 @@ const DailyLog: React.FC = () => {
     setFoodTriggers(newFoodTriggers);
     setEntry((prev: any) => ({
       ...prev,
-      trigger: newFoodTriggers.join(', '),
+      food: newFoodTriggers.join(', '),
     }));
   };
   const [activityTriggers, setActivityTriggers] = useState<string[]>([]);
@@ -103,7 +111,7 @@ const DailyLog: React.FC = () => {
     setActivityTriggers(newActivityTriggers);
     setEntry((prev: any) => ({
       ...prev,
-      trigger: newActivityTriggers.join(', '),
+      activity: newActivityTriggers.join(', '),
     }));
   };
 
@@ -114,7 +122,8 @@ const DailyLog: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const { date, duration, intensity, sleep, screentime, notes, ...symptoms } = entry;
+      const { date, duration, intensity, sleep, screentime, notes, potentialTrigger, weather, food, activity, ...symptoms } = entry;
+      const trigger = {potentialTrigger, weather, food, activity};
 
       const payload = {
         log_id: Math.floor(Math.random() * 100000),
@@ -124,9 +133,10 @@ const DailyLog: React.FC = () => {
         intensity,
         sleep,
         screentime,
+        trigger,
+        symptoms,
         notes,
         created_at: new Date().toISOString(),
-        symptoms
       };
 
       await fetch('http://localhost:3001/api/daily-inputs', {
@@ -233,81 +243,25 @@ const DailyLog: React.FC = () => {
                   <MenuItem key={level} value={level}>{level}</MenuItem>
                 ))}
               </TextField>
-              <Typography variant="subtitle2"
-                sx={{
-                  fontSize: '1rem' , 
-                }}
-              >
-                Sleep (hours)
-              </Typography>
-              <Slider
-                name="sleepHours"
-                value={entry.sleepHours || 0}
-                onChange={(_, val) => {
-                  const numericValue = Number(val);
-                  setEntry((prev: any) => ({ ...prev, sleepHours: numericValue }));
-                }}
-                step={1}
-                min={0}
-                max={12}
-                marks={[
-                  { value: 0, label: '0' },
-                  { value: 1, label: '1' },
-                  { value: 2, label: '2' },
-                  { value: 3, label: '3' },
-                  { value: 4, label: '4' },
-                  { value: 5, label: '5' },
-                  { value: 6, label: '6' },
-                  { value: 7, label: '7' },
-                  { value: 8, label: '8' },
-                  { value: 9, label: '9' },
-                  { value: 10, label: '10' },
-                  { value: 11, label: '11' },
-                  { value: 12, label: '12' },
-                ]}
-                sx={{
-                  width: { xs: '90%', md: '90%' },
-                  height: { xs: 4, md: 8 },
-                }}
-              />
+            
+              <TextField
+              label="Sleep (in hours)"
+              type="number"
+              fullWidth
+              name="sleep"
+              value={entry.sleep}
+              onChange={handleChange}
+            />
 
-              <Typography variant="subtitle2"
-                sx={{
-                  fontSize: '1rem' , 
-                }}
-              >
-                Screentime (hours)
-              </Typography>
-              <Slider
-                name="screentimeHours"
-                value={entry.screentimeHours || 0}
-                onChange={(_, val) => {
-                  const numericValue = Number(val);
-                  setEntry((prev: any) => ({ ...prev, screentimeHours: numericValue }));
-                }}
-                step={1}
-                min={0}
-                max={12}
-                marks={[
-                  { value: 0, label: '0' },
-                  { value: 1, label: '1' },
-                  { value: 2, label: '2' },
-                  { value: 3, label: '3' },
-                  { value: 4, label: '4' },
-                  { value: 5, label: '5' },
-                  { value: 6, label: '6' },
-                  { value: 7, label: '7' },
-                  { value: 8, label: '8' },
-                  { value: 9, label: '9' },
-                  { value: 10, label: '10' },
-                  { value: 11, label: '11' },
-                  { value: 12, label: '12' },
-                ]}
-                sx={{
-                  width: { xs: '90%', md: '90%' },
-                  height: { xs: 4, md: 8 },
-                }}
+              <TextField
+                label="Screentime (in hours)"
+                type="number"
+                fullWidth
+                name="screentime"
+                value={entry.screentime}
+                onChange={handleChange}
               />
+              
 
 <Typography variant="subtitle1" >
       Potential Triggers
