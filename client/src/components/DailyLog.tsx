@@ -13,6 +13,9 @@ import AirIcon from '@mui/icons-material/Air';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import GrainIcon from '@mui/icons-material/Grain';
 
+
+
+
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
 
 const problemOptions = [
@@ -119,7 +122,56 @@ const DailyLog: React.FC = () => {
     const { name, value } = e.target;
     setEntry((prev: typeof entry) => ({ ...prev, [name]: value }));
   };
-
+  const handleSubmit = async () => {
+    try {
+      const method = entry._id ? 'PUT' : 'POST'; // Use PUT for editing, POST for new entries
+      const url = entry._id
+        ? `http://localhost:3001/api/daily-inputs/${entry._id}`
+        : 'http://localhost:3001/api/daily-inputs';
+  
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+  
+      if (response.ok) {
+        const updatedLog = await response.json();
+  
+        if (method === 'PUT') {
+          // Update the history with the edited log
+          setHistory((prevHistory) =>
+            prevHistory.map((log) => (log._id === updatedLog._id ? updatedLog : log))
+          );
+        } else {
+          // Add the new log to the history
+          setHistory((prevHistory) => [updatedLog, ...prevHistory]);
+        }
+  
+        // Clear the form
+        setEntry({
+          date: '',
+          duration: '',
+          intensity: '',
+          sleep: '',
+          screentime: '',
+          potentialTrigger: '',
+          weather: '',
+          food: '',
+          activity: '',
+          symptoms: {},
+          notes: '',
+        });
+  
+        console.log('Entry saved successfully');
+      } else {
+        console.error('Failed to save entry');
+      }
+    } catch (error) {
+      console.error('Error saving entry:', error);
+    }
+  };
+  /*
   const handleSubmit = async () => {
     try {
       const { date, duration, intensity, sleep, screentime, notes, potentialTrigger, weather, food, activity, ...symptoms } = entry;
@@ -150,7 +202,8 @@ const DailyLog: React.FC = () => {
       console.error('Failed to save log', error);
       alert('Failed to save entry.');
     }
-  };
+  }; */
+  
 
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
@@ -166,6 +219,43 @@ const DailyLog: React.FC = () => {
       }
     }
     setShowHistory(prev => !prev);
+  };
+
+  const handleEdit = (log:any) => {
+    // Populate the form with the selected log's data
+    setEntry({
+      ...log,
+      log_date: log.log_date?.substring(0, 10), // Format the date for the input field
+    });
+  
+    // Scroll to the form or focus on it
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (logId: any) => {
+    // Show a confirmation popup
+    const confirmDelete = window.confirm('Are you sure you want to delete this entry?');
+
+    if (!confirmDelete) {
+      // If the user cancels, do nothing
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/daily-inputs/${logId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Remove the deleted log from the history state
+        setHistory((prevHistory) => prevHistory.filter((log) => log._id !== logId));
+        console.log('Log deleted successfully');
+      } else {
+        console.error('Failed to delete log');
+      }
+    } catch (error) {
+      console.error('Error deleting log:', error);
+    }
   };
 
   return (
@@ -199,14 +289,48 @@ const DailyLog: React.FC = () => {
             <Typography>No past entries found.</Typography>
           ) : (
             history.map((log, idx) => (
-              <Box key={idx} mb={2} p={1} border="1px dashed #aaa" borderRadius={1}>
+              <React.Fragment key={idx}>
+              <Box key={idx} mb={2} p={1} border="1px dashed #aaa" borderRadius={1} position="relative">
+                {/* Buttons in the top-right corner */}
+                <Box position="absolute" top={8} right={8} display="flex" gap={1}>
+                  <Button variant="outlined" size="small" color="primary"
+                  onClick={() => handleEdit(log)}
+                  >Edit</Button>
+                  <Button variant="outlined" size="small" color="secondary"
+                  onClick={() => handleDelete(log)}
+                  >Delete</Button>
+                </Box>
+
                 <Typography variant="subtitle2">Date: {log.log_date?.substring(0, 10)}</Typography>
                 <Typography variant="body2">Duration: {log.duration} hours</Typography>
                 <Typography variant="body2">Intensity: {log.intensity}</Typography>
                 <Typography variant="body2">Sleep: {log.sleep}</Typography>
                 <Typography variant="body2">Screentime: {log.screentime}</Typography>
-                <Typography variant="body2">Notes: {log.notes || '-'}</Typography>
+                <Typography variant="body2">Potential Trigger: {log.trigger?.potentialTrigger || '-'}</Typography>
+                <Typography variant="body2">Weather: {log.trigger?.weather || '-'}</Typography>
+                <Typography variant="body2">Food: {log.trigger?.food || '-'}</Typography>
+                <Typography variant="body2">Activity: {log.trigger?.activity || '-'}</Typography>
+
+                {log.symptoms && Object.keys(log.symptoms).length > 0 ? (
+            <>
+              <Typography variant="subtitle2" mt={1}>Symptoms:</Typography>
+              {Object.entries(log.symptoms)
+                .filter(([_, value]) => value !== '') // Filter out "No" and "No Problem"
+                .map(([symptom, value]) => (
+                  <Typography key={symptom} variant="body2">
+                    {symptom}: {String(value || '-')}
+                  </Typography>
+                ))}
+            </>
+          ) : (
+            <Typography variant="body2">Symptoms: None</Typography>
+          )}
+            <Typography variant="body2">Notes: {log.notes || '-'}</Typography>
               </Box>
+
+            </React.Fragment>
+
+          
             ))
           )}
         </Box>
