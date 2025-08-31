@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -20,7 +20,7 @@ import DailyPredictions from '../components/DailyPredictions';
 import Medication from '../components/Medication';
 import WellnessProgram from '../components/WelnessProgram';
 import AIAssistant from '../components/AIAssistant';
-import Visualization from '../components/Visualization'; //Need to change
+import Visualization from '../components/Visualization';
 
 const tabs = [
   'Trigger Prediction',
@@ -28,28 +28,106 @@ const tabs = [
   'Wellness Program',
   'Medication',
   'AI Assistant',
-  'Visualization Report'
+  'Visualization Report',
 ];
 
+// Helper: try multiple places/keys, handle JSON blobs, handle JWT
+const extractName = (): string | null => {
+  if (typeof window === 'undefined') return null;
+
+  const tryKeys = (store: Storage, keys: string[]) => {
+    for (const k of keys) {
+      const v = store.getItem(k);
+      if (!v) continue;
+
+      // JSON object?
+      try {
+        const obj = JSON.parse(v);
+        if (obj && typeof obj === 'object') {
+          // common fields
+          const guess =
+            obj.name ||
+            obj.fullName ||
+            (obj.firstName && obj.lastName ? `${obj.firstName} ${obj.lastName}` : null) ||
+            obj.firstName ||
+            obj.username ||
+            null;
+          if (guess) return String(guess);
+        }
+      } catch {
+        // plain string
+        if (v && v !== 'undefined' && v !== 'null') return v;
+      }
+    }
+    return null;
+  };
+
+  // 1) look in localStorage/sessionStorage common keys
+  const fromLocal =
+    tryKeys(localStorage, ['user', 'profile', 'name', 'username', 'displayName']) ||
+    tryKeys(sessionStorage, ['user', 'profile', 'name', 'username', 'displayName']);
+  if (fromLocal) return fromLocal;
+
+  // 2) optionally decode a JWT if someone stored it under "token" or similar
+  const token =
+    localStorage.getItem('token') ||
+    localStorage.getItem('accessToken') ||
+    sessionStorage.getItem('token') ||
+    sessionStorage.getItem('accessToken');
+  if (token && token.split('.').length === 3) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const guess =
+        payload.name ||
+        payload.fullName ||
+        (payload.given_name && payload.family_name
+          ? `${payload.given_name} ${payload.family_name}`
+          : null) ||
+        payload.given_name ||
+        payload.username;
+      if (guess) return String(guess);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return null;
+};
+
 const Dashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('Daily Trigger Prediction');
+  // FIX: default must exist in `tabs`
+  const [activeTab, setActiveTab] = useState('Trigger Prediction');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [displayName, setDisplayName] = useState('User');
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
+  // Pull name on mount and whenever storage changes (e.g. after login)
+  useEffect(() => {
+    const update = () => {
+      const name = extractName();
+      setDisplayName(name && name.trim().length ? name : 'User');
+    };
+    update();
 
+    // Listen for storage changes across tabs / later login
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key) return update();
+      if (['user', 'profile', 'name', 'username', 'displayName', 'token', 'accessToken'].includes(e.key)) {
+        update();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
   const handleMenuItemClick = (tab: string) => {
     setActiveTab(tab);
     setAnchorEl(null);
   };
-
-  const handleButtonClick = (tab: string) => {
-    setActiveTab(tab);
-  };
+  const handleButtonClick = (tab: string) => setActiveTab(tab);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -70,21 +148,15 @@ const Dashboard: React.FC = () => {
   };
 
   const activeTabIndex = tabs.indexOf(activeTab);
-  const tabWidth = 100 / tabs.length; // 4 tabs = 25% each
+  const tabWidth = 100 / tabs.length;
 
   return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      minHeight="100dvh"
-      bgcolor="#f5f5f5"
-      py={4}
-    >
+    <Box display="flex" flexDirection="column" minHeight="100dvh" bgcolor="#f5f5f5" py={4}>
       {/* Profile Section */}
       <Container maxWidth="lg" sx={{ mb: 4 }}>
         <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
           <Typography variant="h4" fontWeight="bold">
-            Hello, {localStorage.getItem("name") || "User"}
+            Hello, {displayName}
           </Typography>
         </Box>
       </Container>
@@ -93,47 +165,28 @@ const Dashboard: React.FC = () => {
       <Container maxWidth="md" sx={{ mb: 4, position: 'relative' }}>
         {isMobile ? (
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6" fontWeight="bold">
-              {activeTab}
-            </Typography>
-            <IconButton onClick={handleMenuClick}>
-              <MenuIcon />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={() => setAnchorEl(null)}
-            >
+            <Typography variant="h6" fontWeight="bold">{activeTab}</Typography>
+            <IconButton onClick={handleMenuClick}><MenuIcon /></IconButton>
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
               {tabs.map((tab) => (
-                <MenuItem key={tab} onClick={() => handleMenuItemClick(tab)}>
-                  {tab}
-                </MenuItem>
+                <MenuItem key={tab} onClick={() => handleMenuItemClick(tab)}>{tab}</MenuItem>
               ))}
             </Menu>
           </Box>
         ) : (
           <Box position="relative">
-            {/* Moving background slider */}
             <Box position="relative" overflow="hidden" borderRadius="50px" boxShadow={2}>
               <motion.div
                 style={{
                   position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  height: '100%',
+                  top: 0, left: 0, height: '100%',
                   width: `${tabWidth}%`,
                   backgroundColor: theme.palette.primary.main,
                   borderRadius: '50px',
                   zIndex: 1,
                 }}
-                animate={{
-                  x: `${activeTabIndex * 100}%`,
-                }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 300,
-                  damping: 30,
-                }}
+                animate={{ x: `${activeTabIndex * 100}%` }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               />
               <ButtonGroup
                 fullWidth
@@ -145,46 +198,30 @@ const Dashboard: React.FC = () => {
                   borderRadius: '50px',
                   overflow: 'hidden',
                   '& .MuiButtonGroup-grouped': {
-                    border: 'none !important',   // <-- Strong override to kill border
+                    border: 'none !important',
                     borderColor: 'transparent !important',
-                  },
-                  '& .MuiButtonGroup-grouped:not(:last-of-type)': {
-                    borderRight: 'none !important',
                   },
                 }}
               >
-
                 {tabs.map((tab) => (
                   <Button
-                  key={tab}
-                  onClick={() => handleButtonClick(tab)}
-                  sx={{
-                    borderRadius: 0,
-                    bgcolor: 'transparent',
-                    color: activeTab === tab ? 'white' : 'text.primary',
-                    fontWeight: activeTab === tab ? 'bold' : 'normal',
-                    transition: 'color 0.3s ease', // Only color transition
-                    border: 'none !important',
-                    borderColor: 'transparent !important',
-                    boxShadow: 'none !important',
-                    '&:hover': {
-                      color: activeTab === tab ? 'white' : theme.palette.primary.main, // Text becomes primary color on hover
-                      bgcolor: 'transparent',  // stays transparent
-                      boxShadow: 'none',
-                      border: 'none',
-                    },
-                    '&:focus': {
-                      border: 'none',
-                      boxShadow: 'none',
-                    },
-                    '&:focus-visible': {
-                      border: 'none',
-                      boxShadow: 'none',
-                    },
-                  }}
-                >
-                  {tab}
-                </Button>  
+                    key={tab}
+                    onClick={() => handleButtonClick(tab)}
+                    sx={{
+                      borderRadius: 0,
+                      bgcolor: 'transparent',
+                      color: activeTab === tab ? 'white' : 'text.primary',
+                      fontWeight: activeTab === tab ? 'bold' : 'normal',
+                      transition: 'color 0.3s ease',
+                      boxShadow: 'none !important',
+                      '&:hover': {
+                        color: activeTab === tab ? 'white' : theme.palette.primary.main,
+                        bgcolor: 'transparent',
+                      },
+                    }}
+                  >
+                    {tab}
+                  </Button>
                 ))}
               </ButtonGroup>
             </Box>
@@ -209,10 +246,10 @@ const Dashboard: React.FC = () => {
             maxWidth: '800px',
             p: { xs: 2, md: 4 },
             borderRadius: 3,
-            bgcolor: "#ffffff",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: { xs: "200px", md: "300px" },
+            bgcolor: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: { xs: '200px', md: '300px' },
           }}
         >
           {renderContent()}
