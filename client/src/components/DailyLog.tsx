@@ -187,6 +187,55 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     };
   };
 
+  // Build server-friendly payload (user_id + log_id included)
+  const buildPayload = (src: any, isEdit: boolean) => {
+    const {
+      date,
+      duration,
+      intensity,
+      sleep,
+      screentime,
+      notes,
+      potentialTrigger,
+      weather,
+      food,
+      activity,
+      _id,
+      user_id,
+      log_id,
+      ...symptomsRaw
+    } = src;
+
+    const symptoms: Record<string, string> = {};
+    for (const { key, type } of symptomInputs) {
+      const raw = symptomsRaw[key];
+      if (type === 'switch') {
+        symptoms[key] = Number(raw) === 1 ? 'Yes' : 'No';
+      } else {
+        const idx = Number(raw) || 0;
+        symptoms[key] = severityLabels[idx] ?? 'No';
+      }
+    }
+
+    return {
+      user_id: isEdit ? (user_id ?? currentUserId) : currentUserId, // REQUIRED
+      log_id: isEdit ? log_id : Date.now(),                        // REQUIRED (auto-gen)
+      log_date: date ? `${date}T00:00:00` : undefined,
+      duration: src.duration === '' ? null : String(src.duration),
+      intensity: intensity || null,
+      sleep: sleep === '' ? null : String(sleep),
+      screentime: screentime === '' ? null : String(screentime),
+      trigger: {
+        potentialTrigger: potentialTrigger || (potentialTriggers.length ? potentialTriggers.join(', ') : null),
+        weather: weather || (weatherTriggers.length ? weatherTriggers.join(', ') : null),
+        food: food || (foodTriggers.length ? foodTriggers.join(', ') : null),
+        activity: activity || (activityTriggers.length ? activityTriggers.join(', ') : null),
+      },
+      symptoms,
+      notes: notes || null,
+    };
+  };
+
   const handleSubmit = async () => {
     try {
       if (!entry.date) return alert('Date is required.');
@@ -618,6 +667,11 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         flexWrap: 'wrap',
         justifyContent: 'flex-start', 
       }}
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start', 
+      }}
     >
       <ToggleButton value="sunny" aria-label="sunny" 
        sx={{
@@ -703,6 +757,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
       sx={{
         display: 'flex',
         flexWrap: 'wrap',
+        justifyContent: 'flex-start',
         justifyContent: 'flex-start',
       }}
     >
@@ -1119,6 +1174,14 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                         padding: { xs: 1, md: 2 }, // Add padding for phones and larger screens
                       }}
                    >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',    // Align items vertically
+                        width: '100%',           // Ensure the container takes full width
+                        padding: { xs: 1, md: 2 }, // Add padding for phones and larger screens
+                      }}
+                   >
                     <Slider
                       name={key}
                       value={parseInt(entry[key]) || 0}
@@ -1139,7 +1202,12 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                         width: { xs: '90%', md: '90%' }, // Shrink slider width for phones
                         height: { xs: 4, md: 8 },        // Adjust slider height for phones
                       }}
+                      sx={{
+                        width: { xs: '90%', md: '90%' }, // Shrink slider width for phones
+                        height: { xs: 4, md: 8 },        // Adjust slider height for phones
+                      }}
                     />
+                   </Box>
                    </Box>
                   ) : type === 'dropdown' ? (
                     <TextField
@@ -1161,6 +1229,11 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                       display: 'flex', 
                       flexDirection: 'column', 
                       gap: 1 }}>
+                    <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: 1 }}>
                     <RadioGroup
                       name={key}
                       value={entry[key]}
@@ -1176,6 +1249,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                       <FormControlLabel key={opt.value} value={opt.value} control={<Radio />} label={opt.label} />
                       ))}
                     </RadioGroup>
+                    </Box>
                     </Box>
                   ) : type === 'switch' ? (
                     <FormControlLabel
