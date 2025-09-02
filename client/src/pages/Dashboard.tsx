@@ -31,7 +31,7 @@ const tabs = [
   'Visualization Report',
 ];
 
-// Helper: try multiple places/keys, handle JSON blobs, handle JWT
+// Helper: extract a friendly name
 const extractName = (): string | null => {
   if (typeof window === 'undefined') return null;
 
@@ -40,11 +40,9 @@ const extractName = (): string | null => {
       const v = store.getItem(k);
       if (!v) continue;
 
-      // JSON object?
       try {
         const obj = JSON.parse(v);
         if (obj && typeof obj === 'object') {
-          // common fields
           const guess =
             obj.name ||
             obj.fullName ||
@@ -55,20 +53,17 @@ const extractName = (): string | null => {
           if (guess) return String(guess);
         }
       } catch {
-        // plain string
         if (v && v !== 'undefined' && v !== 'null') return v;
       }
     }
     return null;
   };
 
-  // 1) look in localStorage/sessionStorage common keys
   const fromLocal =
     tryKeys(localStorage, ['user', 'profile', 'name', 'username', 'displayName']) ||
     tryKeys(sessionStorage, ['user', 'profile', 'name', 'username', 'displayName']);
   if (fromLocal) return fromLocal;
 
-  // 2) optionally decode a JWT if someone stored it under "token" or similar
   const token =
     localStorage.getItem('token') ||
     localStorage.getItem('accessToken') ||
@@ -94,24 +89,66 @@ const extractName = (): string | null => {
   return null;
 };
 
+// NEW: extract userId robustly from localStorage/sessionStorage
+const extractUserId = (): number | string | null => {
+  const pickId = (obj: any) =>
+    obj?.user_id ?? obj?.id ?? obj?._id ?? (typeof obj === 'number' || typeof obj === 'string' ? obj : null);
+
+  const tryParse = (store: Storage, keys: string[]) => {
+    for (const k of keys) {
+      const v = store.getItem(k);
+      if (!v) continue;
+      try {
+        const obj = JSON.parse(v);
+        const id = pickId(obj) ?? pickId(obj?.user) ?? pickId(obj?.profile);
+        if (id !== null && id !== undefined) return id;
+      } catch {
+        // ignore plain strings here
+      }
+    }
+    return null;
+  };
+
+  const fromLocal =
+    tryParse(localStorage, ['user', 'profile']) || tryParse(sessionStorage, ['user', 'profile']);
+  if (fromLocal !== null) return fromLocal;
+
+  // optional: JWT claim like sub / user_id
+  const token =
+    localStorage.getItem('token') ||
+    localStorage.getItem('accessToken') ||
+    sessionStorage.getItem('token') ||
+    sessionStorage.getItem('accessToken');
+  if (token && token.split('.').length === 3) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const id = pickId(payload) ?? payload?.sub ?? null;
+      if (id !== null && id !== undefined) return id;
+    } catch { /* ignore */ }
+  }
+
+  return null;
+};
+
 const Dashboard: React.FC = () => {
-  // FIX: default must exist in `tabs`
   const [activeTab, setActiveTab] = useState('Trigger Prediction');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [displayName, setDisplayName] = useState('User');
+  const [userId, setUserId] = useState<number | string | null>(null);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Pull name on mount and whenever storage changes (e.g. after login)
   useEffect(() => {
     const update = () => {
       const name = extractName();
       setDisplayName(name && name.trim().length ? name : 'User');
+
+      const id = extractUserId();
+      setUserId(id);
     };
     update();
 
-    // Listen for storage changes across tabs / later login
     const onStorage = (e: StorageEvent) => {
       if (!e.key) return update();
       if (['user', 'profile', 'name', 'username', 'displayName', 'token', 'accessToken'].includes(e.key)) {
@@ -132,7 +169,8 @@ const Dashboard: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'Daily Log':
-        return <DailyLog />;
+        // PASS userId down
+        return <DailyLog userId={userId ?? 1} />;
       case 'Wellness Program':
         return <WellnessProgram />;
       case 'Medication':

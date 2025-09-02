@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import {
-  Box, Typography, TextField, Button, MenuItem,
-  Slider, Switch, FormControl, FormLabel, FormControlLabel,
-  Radio, RadioGroup
+  Box, TextField, Typography, Button, MenuItem, FormControl, FormLabel,
+  Slider, Switch, FormControlLabel, Radio, RadioGroup
 } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -12,9 +11,6 @@ import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
 import AirIcon from '@mui/icons-material/Air';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import GrainIcon from '@mui/icons-material/Grain';
-
-
-
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
 
@@ -53,10 +49,29 @@ const symptomInputs = [
   { key: 'socialSituationAvoidance', label: 'Avoiding social situations', type: 'switch' },
 ];
 
-const DailyLog: React.FC = () => {
+type DailyLogProps = {
+  userId?: number | string | null;
+};
 
-  
+const severityLabels = ['No', 'Mild', 'Moderate', 'Severe'];
+
+const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
+  // Fallback: try to read userId directly if not passed
+  const currentUserId =
+    userId ??
+    (() => {
+      try {
+        const u = localStorage.getItem('user');
+        if (u) {
+          const j = JSON.parse(u);
+          return j?.user_id ?? j?.id ?? j?._id ?? 1;
+        }
+      } catch {}
+      return 1;
+    })();
+
   const [entry, setEntry] = useState<any>({
+    // _id, user_id, log_id will be added on edit / submit
     date: '',
     duration: '',
     intensity: '',
@@ -68,9 +83,7 @@ const DailyLog: React.FC = () => {
     activity: '',
     ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
     notes: '',
-    
   });
-  
 
   const [potentialTriggers, setPotentialTriggers] = useState<string[]>([]);
   const handlePotentialTrigger = (
@@ -95,6 +108,7 @@ const DailyLog: React.FC = () => {
       weather: newWeatherTriggers.join(', '),
     }));
   };
+
   const [foodTriggers, setFoodTriggers] = useState<string[]>([]);
   const handleFoodTrigger = (
     event: React.MouseEvent<HTMLElement>,
@@ -106,6 +120,7 @@ const DailyLog: React.FC = () => {
       food: newFoodTriggers.join(', '),
     }));
   };
+
   const [activityTriggers, setActivityTriggers] = useState<string[]>([]);
   const handleActivityTrigger = (
     event: React.MouseEvent<HTMLElement>,
@@ -122,88 +137,110 @@ const DailyLog: React.FC = () => {
     const { name, value } = e.target;
     setEntry((prev: typeof entry) => ({ ...prev, [name]: value }));
   };
+
+  // Build server-friendly payload (user_id + log_id included)
+  const buildPayload = (src: any, isEdit: boolean) => {
+    const {
+      date,
+      duration,
+      intensity,
+      sleep,
+      screentime,
+      notes,
+      potentialTrigger,
+      weather,
+      food,
+      activity,
+      _id,
+      user_id,
+      log_id,
+      ...symptomsRaw
+    } = src;
+
+    const symptoms: Record<string, string> = {};
+    for (const { key, type } of symptomInputs) {
+      const raw = symptomsRaw[key];
+      if (type === 'switch') {
+        symptoms[key] = Number(raw) === 1 ? 'Yes' : 'No';
+      } else {
+        const idx = Number(raw) || 0;
+        symptoms[key] = severityLabels[idx] ?? 'No';
+      }
+    }
+
+    return {
+      user_id: isEdit ? (user_id ?? currentUserId) : currentUserId, // REQUIRED
+      log_id: isEdit ? log_id : Date.now(),                        // REQUIRED (auto-gen)
+      log_date: date ? `${date}T00:00:00` : undefined,
+      duration: src.duration === '' ? null : String(src.duration),
+      intensity: intensity || null,
+      sleep: sleep === '' ? null : String(sleep),
+      screentime: screentime === '' ? null : String(screentime),
+      trigger: {
+        potentialTrigger: potentialTrigger || (potentialTriggers.length ? potentialTriggers.join(', ') : null),
+        weather: weather || (weatherTriggers.length ? weatherTriggers.join(', ') : null),
+        food: food || (foodTriggers.length ? foodTriggers.join(', ') : null),
+        activity: activity || (activityTriggers.length ? activityTriggers.join(', ') : null),
+      },
+      symptoms,
+      notes: notes || null,
+    };
+  };
+
   const handleSubmit = async () => {
     try {
-      const method = entry._id ? 'PUT' : 'POST'; // Use PUT for editing, POST for new entries
-      const url = entry._id
+      if (!entry.date) return alert('Date is required.');
+      if (entry.duration === '') return alert('Duration is required.');
+      if (!entry.intensity) return alert('Intensity is required.');
+
+      const isEdit = Boolean(entry._id);
+      const payload = buildPayload(entry, isEdit);
+
+      const url = isEdit
         ? `http://localhost:3001/api/daily-inputs/${entry._id}`
         : 'http://localhost:3001/api/daily-inputs';
-  
+
       const response = await fetch(url, {
-        method,
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry),
+        body: JSON.stringify(payload),
       });
-  
-      if (response.ok) {
-        const updatedLog = await response.json();
-  
-        if (method === 'PUT') {
-          // Update the history with the edited log
-          setHistory((prevHistory) =>
-            prevHistory.map((log) => (log._id === updatedLog._id ? updatedLog : log))
-          );
-        } else {
-          // Add the new log to the history
-          setHistory((prevHistory) => [updatedLog, ...prevHistory]);
-        }
-  
-        // Clear the form
-        setEntry({
-          date: '',
-          duration: '',
-          intensity: '',
-          sleep: '',
-          screentime: '',
-          potentialTrigger: '',
-          weather: '',
-          food: '',
-          activity: '',
-          symptoms: {},
-          notes: '',
-        });
-  
-        console.log('Entry saved successfully');
-      } else {
-        console.error('Failed to save entry');
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        console.error('Failed to save entry', err);
+        return alert(err?.message || 'Failed to save entry');
       }
+
+      const saved = await response.json();
+
+      // Update history list if you keep it in this component (you do below)
+      setHistory(prev => (isEdit ? prev.map(l => (l._id === saved._id ? saved : l)) : [saved, ...prev]));
+
+      // Clear form
+      setEntry({
+        date: '',
+        duration: '',
+        intensity: '',
+        sleep: '',
+        screentime: '',
+        potentialTrigger: '',
+        weather: '',
+        food: '',
+        activity: '',
+        ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
+        notes: '',
+      });
+      setPotentialTriggers([]);
+      setWeatherTriggers([]);
+      setFoodTriggers([]);
+      setActivityTriggers([]);
+      console.log('Entry saved successfully');
     } catch (error) {
       console.error('Error saving entry:', error);
-    }
-  };
-  /*
-  const handleSubmit = async () => {
-    try {
-      const { date, duration, intensity, sleep, screentime, notes, potentialTrigger, weather, food, activity, ...symptoms } = entry;
-      const trigger = {potentialTrigger, weather, food, activity};
-
-      const payload = {
-        log_id: Math.floor(Math.random() * 100000),
-        user_id: 1,
-        log_date: date,
-        duration,
-        intensity,
-        sleep,
-        screentime,
-        trigger,
-        symptoms,
-        notes,
-        created_at: new Date().toISOString(),
-      };
-
-      await fetch('http://localhost:3001/api/daily-inputs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      alert('Migraine entry saved!');
-    } catch (error) {
-      console.error('Failed to save log', error);
       alert('Failed to save entry.');
     }
-  }; */
-  
+  };
 
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
@@ -225,21 +262,28 @@ const DailyLog: React.FC = () => {
     // Populate the form with the selected log's data
     setEntry({
       ...log,
-      log_date: log.log_date?.substring(0, 10), // Format the date for the input field
+      // IMPORTANT: the form field is "date", not "log_date"
+      date: log.log_date ? String(log.log_date).substring(0, 10) : '',
     });
-  
-    // Scroll to the form or focus on it
+
+    // Preselect toggles from trigger strings
+    const trig = log.trigger || {};
+    setPotentialTriggers((trig.potentialTrigger || '').split(',').map((s:string) => s.trim()).filter(Boolean));
+    setWeatherTriggers((trig.weather || '').split(',').map((s:string) => s.trim()).filter(Boolean));
+    setFoodTriggers((trig.food || '').split(',').map((s:string) => s.trim()).filter(Boolean));
+    setActivityTriggers((trig.activity || '').split(',').map((s:string) => s.trim()).filter(Boolean));
+
+    // Scroll to the form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (logId: any) => {
-    // Show a confirmation popup
-    const confirmDelete = window.confirm('Are you sure you want to delete this entry?');
+  const handleDelete = async (item: any) => {
+    // accept either id or log object
+    const logId = typeof item === 'string' || typeof item === 'number' ? item : item?._id;
+    if (!logId) return;
 
-    if (!confirmDelete) {
-      // If the user cancels, do nothing
-      return;
-    }
+    const confirmDelete = window.confirm('Are you sure you want to delete this entry?');
+    if (!confirmDelete) return;
 
     try {
       const response = await fetch(`http://localhost:3001/api/daily-inputs/${logId}`, {
@@ -247,9 +291,25 @@ const DailyLog: React.FC = () => {
       });
 
       if (response.ok) {
-        // Remove the deleted log from the history state
         setHistory((prevHistory) => prevHistory.filter((log) => log._id !== logId));
         console.log('Log deleted successfully');
+        // If the deleted one is currently loaded for editing, clear form
+        if (entry._id === logId) {
+          setEntry({
+            date: '',
+            duration: '',
+            intensity: '',
+            sleep: '',
+            screentime: '',
+            potentialTrigger: '',
+            weather: '',
+            food: '',
+            activity: '',
+            ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
+            notes: '',
+          });
+          setPotentialTriggers([]); setWeatherTriggers([]); setFoodTriggers([]); setActivityTriggers([]);
+        }
       } else {
         console.error('Failed to delete log');
       }
@@ -263,7 +323,7 @@ const DailyLog: React.FC = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h4" fontWeight="bold" color="#1565c0"
         sx={{
-          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }, // Adjust font size for different screen sizes
+          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
         }}>
           Migraine Diary Entry
         </Typography>
@@ -271,9 +331,9 @@ const DailyLog: React.FC = () => {
           variant="outlined"
           onClick={toggleHistory}
           sx={{
-            width: { xs: '85px', sm: 'fit-content' }, // Smaller width for phones, fit-content for larger screens
-            fontSize: { xs: '0.6rem', sm: '1rem' }, // Smaller font size for phones
-            padding: { xs: '4px 8px', sm: '6px 12px' }, // Adjust padding for smaller screens
+            width: { xs: '85px', sm: 'fit-content' },
+            fontSize: { xs: '0.6rem', sm: '1rem' },
+            padding: { xs: '4px 8px', sm: '6px 12px' },
           }}
         >
           {showHistory ? 'Hide History' : 'View History'}
@@ -301,11 +361,11 @@ const DailyLog: React.FC = () => {
                   >Delete</Button>
                 </Box>
 
-                <Typography variant="subtitle2">Date: {log.log_date?.substring(0, 10)}</Typography>
-                <Typography variant="body2">Duration: {log.duration} hours</Typography>
-                <Typography variant="body2">Intensity: {log.intensity}</Typography>
-                <Typography variant="body2">Sleep: {log.sleep}</Typography>
-                <Typography variant="body2">Screentime: {log.screentime}</Typography>
+                <Typography variant="subtitle2">Date: {String(log.log_date || '').substring(0, 10) || '-'}</Typography>
+                <Typography variant="body2">Duration: {log.duration ?? '-'} hours</Typography>
+                <Typography variant="body2">Intensity: {log.intensity ?? '-'}</Typography>
+                <Typography variant="body2">Sleep: {log.sleep ?? '-'}</Typography>
+                <Typography variant="body2">Screentime: {log.screentime ?? '-'}</Typography>
                 <Typography variant="body2">Potential Trigger: {log.trigger?.potentialTrigger || '-'}</Typography>
                 <Typography variant="body2">Weather: {log.trigger?.weather || '-'}</Typography>
                 <Typography variant="body2">Food: {log.trigger?.food || '-'}</Typography>
@@ -315,7 +375,7 @@ const DailyLog: React.FC = () => {
             <>
               <Typography variant="subtitle2" mt={1}>Symptoms:</Typography>
               {Object.entries(log.symptoms)
-                .filter(([_, value]) => value !== '') // Filter out "No" and "No Problem"
+                .filter(([_, value]) => value !== '')
                 .map(([symptom, value]) => (
                   <Typography key={symptom} variant="body2">
                     {symptom}: {String(value || '-')}
@@ -434,8 +494,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="dehydration" aria-label="dehydration" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -561,8 +621,8 @@ const DailyLog: React.FC = () => {
     >
       <ToggleButton value="sunny" aria-label="sunny" 
        sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 60, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <SunnyIcon />
@@ -573,8 +633,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="cloudy" aria-label="cloudy" 
        sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 60, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <WbCloudyIcon />
@@ -585,8 +645,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="thunder" aria-label="thunder" 
        sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 60, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <ThunderstormIcon />
@@ -597,8 +657,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="windy" aria-label="windy" 
        sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 60, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <AirIcon />
@@ -609,8 +669,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="rainy" aria-label="rainy" 
        sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 60, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <WaterDropIcon />
@@ -621,8 +681,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="snowy" aria-label="snowy" 
        sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 60, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 60, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
           <GrainIcon />
@@ -648,8 +708,8 @@ const DailyLog: React.FC = () => {
     >
       <ToggleButton value="alcohol" aria-label="alcohol" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -664,8 +724,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="caffeine" aria-label="caffeine" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -680,8 +740,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="citrus" aria-label="citrus" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -696,8 +756,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="banana" aria-label="banana" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -712,8 +772,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="avocado" aria-label="avocado" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -728,8 +788,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="cheese" aria-label="cheese" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -744,8 +804,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="milk" aria-label="milk" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -760,8 +820,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="yogurt" aria-label="yogurt" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -776,8 +836,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="icecream" aria-label="icecream" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -792,8 +852,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="chocolate" aria-label="chocolate" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -808,8 +868,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="peanutbutter" aria-label="peanutbutter" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -824,8 +884,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="nuts" aria-label="nuts" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -840,8 +900,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="processedmeats" aria-label="processedmeats" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -856,8 +916,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="fermentedfoods" aria-label="fermentedfoods" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
@@ -872,8 +932,8 @@ const DailyLog: React.FC = () => {
       </ToggleButton>
       <ToggleButton value="msg" aria-label="msg" 
       sx={{
-        width: { xs: 90, md: 100 }, // Smaller width for phones, larger for laptops
-        height: { xs: 70, md: 75 }, // Smaller height for phones, larger for laptops
+        width: { xs: 90, md: 100 },
+        height: { xs: 70, md: 75 },
       }}>
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
