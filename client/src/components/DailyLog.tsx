@@ -235,12 +235,15 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
       setWeatherTriggers([]);
       setFoodTriggers([]);
       setActivityTriggers([]);
+      // Show success notification
+      alert('Migraine diary entry saved successfully!'); // Show success notification
       console.log('Entry saved successfully');
-    } catch (error) {
-      console.error('Error saving entry:', error);
-      alert('Failed to save entry.');
-    }
-  };
+      
+  } catch (error) {
+    console.error('Error submitting entry:', error);
+    alert('An error occurred while submitting the entry. Please try again.');
+  }
+};
 
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
