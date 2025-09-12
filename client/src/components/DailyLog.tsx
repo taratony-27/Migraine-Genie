@@ -55,6 +55,13 @@ type DailyLogProps = {
 
 const severityLabels = ['No', 'Mild', 'Moderate', 'Severe'];
 
+// ===== infra helpers =====
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3001'; // [MODIFIED]
+const apiUrl = (path: string, userId?: number | string) =>
+  `${API_BASE}${path}${userId !== undefined ? `?userId=${userId}` : ''}`; // [MODIFIED]
+// (Optional helper you may later use for safe icon paths if deploying under a subpath)
+// const withBase = (p: string) => `${process.env.PUBLIC_URL || ''}${p}`;
+
 const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
   // Fallback: try to read userId directly if not passed
   const currentUserId =
@@ -174,8 +181,8 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
       log_date: date ? `${date}T00:00:00` : undefined,
       duration: src.duration === '' ? null : String(src.duration),
       intensity: intensity || null,
-      sleep: sleep === '' ? null : String(sleep),
-      screentime: screentime === '' ? null : String(screentime),
+      sleep: sleep === '' ? null : Number(sleep),                  // [MODIFIED] ensure number
+      screentime: screentime === '' ? null : Number(screentime),   // [MODIFIED] ensure number
       trigger: {
         potentialTrigger: potentialTrigger || (potentialTriggers.length ? potentialTriggers.join(', ') : null),
         weather: weather || (weatherTriggers.length ? weatherTriggers.join(', ') : null),
@@ -187,6 +194,22 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     };
   };
 
+  // ===== Prediction gate state & loader =====
+  const [canPredict, setCanPredict] = useState<boolean | null>(null); // [MODIFIED]
+
+  const refreshCount = async () => {                                  // [MODIFIED]
+    try {
+      const r = await fetch(apiUrl('/api/daily-inputs/my/count', currentUserId));
+      if (!r.ok) throw new Error('count failed');
+      const { canPredict } = await r.json();
+      setCanPredict(Boolean(canPredict));
+    } catch {
+      setCanPredict(null);
+    }
+  };
+
+  React.useEffect(() => { refreshCount(); }, []);                     // [MODIFIED]
+
   const handleSubmit = async () => {
     try {
       if (!entry.date) return alert('Date is required.');
@@ -197,8 +220,8 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
       const payload = buildPayload(entry, isEdit);
 
       const url = isEdit
-        ? `http://localhost:3001/api/daily-inputs/${entry._id}`
-        : 'http://localhost:3001/api/daily-inputs';
+        ? apiUrl(`/api/daily-inputs/${entry._id}`, currentUserId)  // [MODIFIED]
+        : apiUrl('/api/daily-inputs', currentUserId);              // [MODIFIED]
 
       const response = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
@@ -238,12 +261,13 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
       // Show success notification
       alert('Migraine diary entry saved successfully!'); // Show success notification
       console.log('Entry saved successfully');
-      
-  } catch (error) {
-    console.error('Error submitting entry:', error);
-    alert('An error occurred while submitting the entry. Please try again.');
-  }
-};
+
+      await refreshCount(); // [MODIFIED]
+    } catch (error) {
+      console.error('Error submitting entry:', error);
+      alert('An error occurred while submitting the entry. Please try again.');
+    }
+  };
 
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
@@ -251,7 +275,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
   const toggleHistory = async () => {
     if (!showHistory) {
       try {
-        const response = await fetch('http://localhost:3001/api/daily-inputs');
+        const response = await fetch(apiUrl('/api/daily-inputs', currentUserId)); // [MODIFIED]
         const data = await response.json();
         setHistory(data);
       } catch (err) {
@@ -289,7 +313,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/daily-inputs/${logId}`, {
+      const response = await fetch(apiUrl(`/api/daily-inputs/${logId}`, currentUserId), { // [MODIFIED]
         method: 'DELETE',
       });
 
@@ -313,6 +337,8 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           });
           setPotentialTriggers([]); setWeatherTriggers([]); setFoodTriggers([]); setActivityTriggers([]);
         }
+
+        await refreshCount(); // [MODIFIED]
       } else {
         console.error('Failed to delete log');
       }
@@ -342,6 +368,15 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           {showHistory ? 'Hide History' : 'View History'}
         </Button>
       </Box>
+
+      {/* Prediction banner (non-blocking) */} {/* [MODIFIED] */}
+      {canPredict !== null && (
+        <Box mb={2} p={2} borderRadius={2} bgcolor={canPredict ? '#E8F5E9' : '#FFF3E0'}>
+          <Typography>
+            {canPredict ? 'Your prediction for today is ready.' : 'Keep filling out more data.'}
+          </Typography>
+        </Box>
+      )}
 
       {showHistory ? (
         <Box mb={4} p={2} border="1px solid #ccc" borderRadius={2}>
@@ -1124,7 +1159,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                    >
                     <Slider
                       name={key}
-                      value={parseInt(entry[key]) || 0}
+                      value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
                       onChange={(_, val) => {
                         const numericValue = Number(val);
                         setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
@@ -1166,7 +1201,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                       gap: 1 }}>
                     <RadioGroup
                       name={key}
-                      value={entry[key]}
+                      value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
                       onChange={(_, val) => {
                         const numericValue = Number(val);
                         setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));

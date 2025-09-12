@@ -3,21 +3,41 @@ import {
   getDailyInputs,
   createDailyInput,
   updateDailyInput,
-  deleteDailyInput
+  deleteDailyInput,
+  getMyDailyInputCount, // [UNCHANGED]
 } from '../controllers/dailyInputController';
 
 const router = express.Router();
 
-// GET all daily inputs
-router.get('/', getDailyInputs);
+/**
+ * [MODIFIED] Auth removed.
+ * Supply userId via query string:   GET /api/daily-inputs/my/count?userId=123
+ * (or use a route param if you prefer: change the handler to read req.params.userId)
+ */
+router.get('/my/count', getMyDailyInputCount); // [MODIFIED] removed requireAuth
 
-// POST a new daily input
-router.post('/', createDailyInput);
+/**
+ * [MODIFIED] Auth removed.
+ * Supply userId via query string:   GET /api/daily-inputs?userId=123
+ */
+router.get('/', getDailyInputs); // [MODIFIED] removed requireAuth
 
-// PUT to update a daily input by ID
-router.put('/:id', updateDailyInput);
+/**
+ * [MODIFIED] Auth removed.
+ * Supply user_id in body or as ?userId=123
+ */
+router.post('/', createDailyInput); // [MODIFIED] removed requireAuth
 
-// DELETE a daily input by ID
-router.delete('/:id', deleteDailyInput);
+/**
+ * [MODIFIED] Auth removed.
+ * Supply userId via query (recommended) or include user_id in body.
+ */
+router.put('/:id', updateDailyInput); // [MODIFIED] removed requireAuth
+
+/**
+ * [MODIFIED] Auth removed.
+ * Supply userId via query (recommended) or include user_id in body.
+ */
+router.delete('/:id', deleteDailyInput); // [MODIFIED] removed requireAuth
 
 export default router;
