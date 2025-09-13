@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, TextField, Typography, Button, MenuItem, FormControl, FormLabel,
   Slider, Switch, FormControlLabel, Radio, RadioGroup,
-  Snackbar, Alert
+  Snackbar, Alert, Grid, Paper, Chip, IconButton, Tooltip, Stack, Divider,
 } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -12,6 +12,8 @@ import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
 import AirIcon from '@mui/icons-material/Air';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import GrainIcon from '@mui/icons-material/Grain';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../services/api';
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
@@ -262,6 +264,56 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     }
   };
 
+  // Simple card style
+  const cardSx = {
+    p: 2,
+    borderRadius: 2,
+    bgcolor: '#fff',
+    border: '1px solid rgba(0,0,0,0.06)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+  };
+
+  // Build trigger array → chips
+  const triggerChips = (trig: any): string[] => {
+    if (!trig || typeof trig !== 'object') return [];
+    const parts = [trig.potentialTrigger, trig.weather, trig.food, trig.activity]
+      .filter(Boolean)
+      .flatMap((s: string) =>
+        String(s)
+          .split(',')
+          .map((x) => x.trim())
+          .filter(Boolean)
+      );
+    // de-dupe while preserving order
+    return Array.from(new Set(parts));
+  };
+
+  // Symptom “pills” (skip empty/No)
+  const SymptomPills: React.FC<{ symptoms?: Record<string, any> }> = ({ symptoms }) => {
+    if (!symptoms || Object.keys(symptoms).length === 0) return null;
+    const items = Object.entries(symptoms).filter(([, v]) => {
+      const val = String(v ?? '').trim().toLowerCase();
+      return val !== '' && val !== 'no';
+    });
+    if (items.length === 0) return null;
+
+    return (
+      <Stack spacing={1} mt={1}>
+        <Typography variant="subtitle2">Symptoms</Typography>
+        <Box display="flex" flexWrap="wrap" gap={1}>
+          {items.map(([k, v]) => (
+            <Chip
+              key={k}
+              size="small"
+              label={`${k}: ${v}`}
+              sx={{ borderRadius: '9999px' }}
+            />
+          ))}
+        </Box>
+      </Stack>
+    );
+  };
+
   return (
     <Box width="100%">
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -340,10 +392,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           )}
             <Typography variant="body2">Notes: {log.notes || '-'}</Typography>
               </Box>
-
-            </React.Fragment>
-
-          
+            </React.Fragment>          
             ))
           )}
         </Box>
