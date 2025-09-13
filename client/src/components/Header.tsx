@@ -48,7 +48,7 @@ const Header: React.FC = () => {
 
         {isHome && !isLoggedIn ? (
           <Button variant="contained" color="primary" onClick={() => navigate('/')}>
-            Sign Up
+            Get Started
           </Button>
         ) : isLoggedIn ? (
           <Box display="flex" alignItems="center" gap={2}>

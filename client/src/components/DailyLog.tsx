@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, TextField, Typography, Button, MenuItem, FormControl, FormLabel,
-  Slider, Switch, FormControlLabel, Radio, RadioGroup
+  Slider, Switch, FormControlLabel, Radio, RadioGroup,
+  Snackbar, Alert
 } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -11,6 +12,7 @@ import ThunderstormIcon from '@mui/icons-material/Thunderstorm';
 import AirIcon from '@mui/icons-material/Air';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import GrainIcon from '@mui/icons-material/Grain';
+import api from '../services/api';
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
 
@@ -55,15 +57,7 @@ type DailyLogProps = {
 
 const severityLabels = ['No', 'Mild', 'Moderate', 'Severe'];
 
-// ===== infra helpers =====
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3001'; // [MODIFIED]
-const apiUrl = (path: string, userId?: number | string) =>
-  `${API_BASE}${path}${userId !== undefined ? `?userId=${userId}` : ''}`; // [MODIFIED]
-// (Optional helper you may later use for safe icon paths if deploying under a subpath)
-// const withBase = (p: string) => `${process.env.PUBLIC_URL || ''}${p}`;
-
 const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
-  // Fallback: try to read userId directly if not passed
   const currentUserId =
     userId ??
     (() => {
@@ -77,8 +71,15 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
       return 1;
     })();
 
+  // attach token to shared client if present
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+  }, []);
+
   const [entry, setEntry] = useState<any>({
-    // _id, user_id, log_id will be added on edit / submit
     date: '',
     duration: '',
     intensity: '',
@@ -92,52 +93,34 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     notes: '',
   });
 
+  // ====== Toast state & helper ======
+  const [toast, setToast] = useState<{open: boolean; message: string; severity: 'success' | 'error' | 'warning' | 'info'}>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+  const notify = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') =>
+    setToast({ open: true, message, severity });
+
   const [potentialTriggers, setPotentialTriggers] = useState<string[]>([]);
-  const handlePotentialTrigger = (
-    event: React.MouseEvent<HTMLElement>,
-    newPotentialTriggers: string[]
-  ) => {
-    setPotentialTriggers(newPotentialTriggers);
-    setEntry((prev: any) => ({
-      ...prev,
-      potentialTrigger: newPotentialTriggers.join(', '),
-    }));
+  const handlePotentialTrigger = (_: any, newVals: string[]) => {
+    setPotentialTriggers(newVals);
+    setEntry((prev: any) => ({ ...prev, potentialTrigger: newVals.join(', ') }));
   };
-
   const [weatherTriggers, setWeatherTriggers] = useState<string[]>([]);
-  const handleWeatherTrigger = (
-    event: React.MouseEvent<HTMLElement>,
-    newWeatherTriggers: string[]
-  ) => {
-    setWeatherTriggers(newWeatherTriggers);
-    setEntry((prev: any) => ({
-      ...prev,
-      weather: newWeatherTriggers.join(', '),
-    }));
+  const handleWeatherTrigger = (_: any, newVals: string[]) => {
+    setWeatherTriggers(newVals);
+    setEntry((prev: any) => ({ ...prev, weather: newVals.join(', ') }));
   };
-
   const [foodTriggers, setFoodTriggers] = useState<string[]>([]);
-  const handleFoodTrigger = (
-    event: React.MouseEvent<HTMLElement>,
-    newFoodTriggers: string[]
-  ) => {
-    setFoodTriggers(newFoodTriggers);
-    setEntry((prev: any) => ({
-      ...prev,
-      food: newFoodTriggers.join(', '),
-    }));
+  const handleFoodTrigger = (_: any, newVals: string[]) => {
+    setFoodTriggers(newVals);
+    setEntry((prev: any) => ({ ...prev, food: newVals.join(', ') }));
   };
-
   const [activityTriggers, setActivityTriggers] = useState<string[]>([]);
-  const handleActivityTrigger = (
-    event: React.MouseEvent<HTMLElement>,
-    newActivityTriggers: string[]
-  ) => {
-    setActivityTriggers(newActivityTriggers);
-    setEntry((prev: any) => ({
-      ...prev,
-      activity: newActivityTriggers.join(', '),
-    }));
+  const handleActivityTrigger = (_: any, newVals: string[]) => {
+    setActivityTriggers(newVals);
+    setEntry((prev: any) => ({ ...prev, activity: newVals.join(', ') }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -145,23 +128,10 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     setEntry((prev: typeof entry) => ({ ...prev, [name]: value }));
   };
 
-  // Build server-friendly payload (user_id + log_id included)
   const buildPayload = (src: any, isEdit: boolean) => {
     const {
-      date,
-      duration,
-      intensity,
-      sleep,
-      screentime,
-      notes,
-      potentialTrigger,
-      weather,
-      food,
-      activity,
-      _id,
-      user_id,
-      log_id,
-      ...symptomsRaw
+      date, duration, intensity, sleep, screentime, notes,
+      potentialTrigger, weather, food, activity, _id, user_id, log_id, ...symptomsRaw
     } = src;
 
     const symptoms: Record<string, string> = {};
@@ -176,13 +146,13 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     }
 
     return {
-      user_id: isEdit ? (user_id ?? currentUserId) : currentUserId, // REQUIRED
-      log_id: isEdit ? log_id : Date.now(),                        // REQUIRED (auto-gen)
+      user_id: isEdit ? (user_id ?? currentUserId) : currentUserId,
+      log_id: isEdit ? log_id : Date.now(),
       log_date: date ? `${date}T00:00:00` : undefined,
-      duration: src.duration === '' ? null : String(src.duration),
+      duration: duration === '' ? null : String(duration),
       intensity: intensity || null,
-      sleep: sleep === '' ? null : Number(sleep),                  // [MODIFIED] ensure number
-      screentime: screentime === '' ? null : Number(screentime),   // [MODIFIED] ensure number
+      sleep: sleep === '' ? null : Number(sleep),
+      screentime: screentime === '' ? null : Number(screentime),
       trigger: {
         potentialTrigger: potentialTrigger || (potentialTriggers.length ? potentialTriggers.join(', ') : null),
         weather: weather || (weatherTriggers.length ? weatherTriggers.join(', ') : null),
@@ -194,89 +164,57 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     };
   };
 
-  // ===== Prediction gate state & loader =====
-  const [canPredict, setCanPredict] = useState<boolean | null>(null); // [MODIFIED]
-
-  const refreshCount = async () => {                                  // [MODIFIED]
+  const [canPredict, setCanPredict] = useState<boolean | null>(null);
+  const refreshCount = async () => {
     try {
-      const r = await fetch(apiUrl('/api/daily-inputs/my/count', currentUserId));
-      if (!r.ok) throw new Error('count failed');
-      const { canPredict } = await r.json();
-      setCanPredict(Boolean(canPredict));
+      const { data } = await api.get('/api/daily-inputs/my/count', { params: { userId: currentUserId } });
+      setCanPredict(Boolean(data?.canPredict));
     } catch {
       setCanPredict(null);
     }
   };
-
-  React.useEffect(() => { refreshCount(); }, []);                     // [MODIFIED]
-
-  const handleSubmit = async () => {
-    try {
-      if (!entry.date) return alert('Date is required.');
-      if (entry.duration === '') return alert('Duration is required.');
-      if (!entry.intensity) return alert('Intensity is required.');
-
-      const isEdit = Boolean(entry._id);
-      const payload = buildPayload(entry, isEdit);
-
-      const url = isEdit
-        ? apiUrl(`/api/daily-inputs/${entry._id}`, currentUserId)  // [MODIFIED]
-        : apiUrl('/api/daily-inputs', currentUserId);              // [MODIFIED]
-
-      const response = await fetch(url, {
-        method: isEdit ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        console.error('Failed to save entry', err);
-        return alert(err?.message || 'Failed to save entry');
-      }
-
-      const saved = await response.json();
-
-      // Update history list if you keep it in this component (you do below)
-      setHistory(prev => (isEdit ? prev.map(l => (l._id === saved._id ? saved : l)) : [saved, ...prev]));
-
-      // Clear form
-      setEntry({
-        date: '',
-        duration: '',
-        intensity: '',
-        sleep: '',
-        screentime: '',
-        potentialTrigger: '',
-        weather: '',
-        food: '',
-        activity: '',
-        ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
-        notes: '',
-      });
-      setPotentialTriggers([]);
-      setWeatherTriggers([]);
-      setFoodTriggers([]);
-      setActivityTriggers([]);
-      // Show success notification
-      alert('Migraine diary entry saved successfully!'); // Show success notification
-      console.log('Entry saved successfully');
-
-      await refreshCount(); // [MODIFIED]
-    } catch (error) {
-      console.error('Error submitting entry:', error);
-      alert('An error occurred while submitting the entry. Please try again.');
-    }
-  };
+  useEffect(() => { refreshCount(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
 
+  const handleSubmit = async () => {
+    try {
+      if (!entry.date) return notify('Date is required.', 'warning');
+      if (entry.duration === '') return notify('Duration is required.', 'warning');
+      if (!entry.intensity) return notify('Intensity is required.', 'warning');
+
+      const isEdit = Boolean(entry._id);
+      const payload = buildPayload(entry, isEdit);
+
+      const res = isEdit
+        ? await api.put(`/api/daily-inputs/${entry._id}`, payload, { params: { userId: currentUserId } })
+        : await api.post('/api/daily-inputs', payload, { params: { userId: currentUserId } });
+
+      const saved = res.data;
+      setHistory(prev => (isEdit ? prev.map(l => (l._id === saved._id ? saved : l)) : [saved, ...prev]));
+
+      setEntry({
+        date: '', duration: '', intensity: '', sleep: '', screentime: '',
+        potentialTrigger: '', weather: '', food: '', activity: '',
+        ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
+        notes: '',
+      });
+      setPotentialTriggers([]); setWeatherTriggers([]); setFoodTriggers([]); setActivityTriggers([]);
+
+      notify('Migraine diary entry saved successfully!', 'success');
+      await refreshCount();
+    } catch (error: any) {
+      console.error('Error submitting entry:', error);
+      const msg = error?.response?.data?.message || 'An error occurred while submitting the entry. Please try again.';
+      notify(msg, 'error');
+    }
+  };
+
   const toggleHistory = async () => {
     if (!showHistory) {
       try {
-        const response = await fetch(apiUrl('/api/daily-inputs', currentUserId)); // [MODIFIED]
-        const data = await response.json();
+        const { data } = await api.get('/api/daily-inputs', { params: { userId: currentUserId } });
         setHistory(data);
       } catch (err) {
         console.error('Failed to load history', err);
@@ -286,64 +224,41 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
   };
 
   const handleEdit = (log:any) => {
-    // Populate the form with the selected log's data
     setEntry({
       ...log,
-      // IMPORTANT: the form field is "date", not "log_date"
       date: log.log_date ? String(log.log_date).substring(0, 10) : '',
     });
-
-    // Preselect toggles from trigger strings
     const trig = log.trigger || {};
     setPotentialTriggers((trig.potentialTrigger || '').split(',').map((s:string) => s.trim()).filter(Boolean));
     setWeatherTriggers((trig.weather || '').split(',').map((s:string) => s.trim()).filter(Boolean));
     setFoodTriggers((trig.food || '').split(',').map((s:string) => s.trim()).filter(Boolean));
     setActivityTriggers((trig.activity || '').split(',').map((s:string) => s.trim()).filter(Boolean));
-
-    // Scroll to the form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (item: any) => {
-    // accept either id or log object
     const logId = typeof item === 'string' || typeof item === 'number' ? item : item?._id;
     if (!logId) return;
-
     const confirmDelete = window.confirm('Are you sure you want to delete this entry?');
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(apiUrl(`/api/daily-inputs/${logId}`, currentUserId), { // [MODIFIED]
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setHistory((prevHistory) => prevHistory.filter((log) => log._id !== logId));
-        console.log('Log deleted successfully');
-        // If the deleted one is currently loaded for editing, clear form
-        if (entry._id === logId) {
-          setEntry({
-            date: '',
-            duration: '',
-            intensity: '',
-            sleep: '',
-            screentime: '',
-            potentialTrigger: '',
-            weather: '',
-            food: '',
-            activity: '',
-            ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
-            notes: '',
-          });
-          setPotentialTriggers([]); setWeatherTriggers([]); setFoodTriggers([]); setActivityTriggers([]);
-        }
-
-        await refreshCount(); // [MODIFIED]
-      } else {
-        console.error('Failed to delete log');
+      await api.delete(`/api/daily-inputs/${logId}`, { params: { userId: currentUserId } });
+      setHistory((prevHistory) => prevHistory.filter((log) => log._id !== logId));
+      if (entry._id === logId) {
+        setEntry({
+          date: '', duration: '', intensity: '', sleep: '', screentime: '',
+          potentialTrigger: '', weather: '', food: '', activity: '',
+          ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
+          notes: '',
+        });
+        setPotentialTriggers([]); setWeatherTriggers([]); setFoodTriggers([]); setActivityTriggers([]);
       }
+      notify('Entry deleted.', 'success');
+      await refreshCount();
     } catch (error) {
       console.error('Error deleting log:', error);
+      notify('Failed to delete entry.', 'error');
     }
   };
 
@@ -1144,118 +1059,134 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         </Box>
       </ToggleButton>
     </ToggleButtonGroup>
+          {symptomInputs.map(({ key, label, type }) => (
+            <FormControl key={key} fullWidth>
+              <FormLabel>{label}</FormLabel>
+              {type === 'slider' ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',    // Align items vertically
+                    width: '100%',           // Ensure the container takes full width
+                    padding: { xs: 1, md: 2 }, // Add padding for phones and larger screens
+                  }}
+                >
+                <Slider
+                  name={key}
+                  value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
+                  onChange={(_, val) => {
+                    const numericValue = Number(val);
+                    setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
+                  }}
+                  step={1}
+                  min={0}
+                  max={3}
+                  marks={[
+                    { value: 0, label: 'No' },
+                    { value: 1, label: 'Mild' },
+                    { value: 2, label: 'Moderate' },
+                    { value: 3, label: 'Severe' },
+                  ]}
+                  sx={{
+                    width: { xs: '90%', md: '90%' }, // Shrink slider width for phones
+                    height: { xs: 4, md: 8 },        // Adjust slider height for phones
+                  }}
+                />
+                </Box>
+              ) : type === 'dropdown' ? (
+                <TextField
+                  select
+                  name={key}
+                  value={entry[key]}
+                  onChange={handleChange}
+                >
+                  {problemOptions.map(opt => (
+                    <MenuItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </MenuItem>
+                  ))}
 
-              {symptomInputs.map(({ key, label, type }) => (
-                <FormControl key={key} fullWidth>
-                  <FormLabel>{label}</FormLabel>
-                  {type === 'slider' ? (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',    // Align items vertically
-                        width: '100%',           // Ensure the container takes full width
-                        padding: { xs: 1, md: 2 }, // Add padding for phones and larger screens
-                      }}
-                   >
-                    <Slider
-                      name={key}
-                      value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
-                      onChange={(_, val) => {
-                        const numericValue = Number(val);
-                        setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
-                      }}
-                      step={1}
-                      min={0}
-                      max={3}
-                      marks={[
-                        { value: 0, label: 'No' },
-                        { value: 1, label: 'Mild' },
-                        { value: 2, label: 'Moderate' },
-                        { value: 3, label: 'Severe' },
-                      ]}
-                      sx={{
-                        width: { xs: '90%', md: '90%' }, // Shrink slider width for phones
-                        height: { xs: 4, md: 8 },        // Adjust slider height for phones
-                      }}
-                    />
-                   </Box>
-                  ) : type === 'dropdown' ? (
-                    <TextField
-                      select
-                      name={key}
-                      value={entry[key]}
-                      onChange={handleChange}
-                    >
-                      {problemOptions.map(opt => (
-                        <MenuItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </MenuItem>
-                      ))}
-
-                    </TextField>
-                  ) : type === 'radio' ? (
-                    <Box 
-                    sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: 1 }}>
-                    <RadioGroup
-                      name={key}
-                      value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
-                      onChange={(_, val) => {
-                        const numericValue = Number(val);
-                        setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
-                      }}
-                      sx={{
-                      flexDirection: { xs: 'column', sm: 'row', lg: 'row' } // Vertical for phones, horizontal for laptops
-                      }}
-                    >
-                      {problemOptions.map(opt => (
-                      <FormControlLabel key={opt.value} value={opt.value} control={<Radio />} label={opt.label} />
-                      ))}
-                    </RadioGroup>
-                    </Box>
-                  ) : type === 'switch' ? (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={entry[key] === 1}
-                          onChange={e =>
-                            setEntry((prev: typeof entry) => ({
-                              ...prev,
-                              [key]: e.target.checked ? 1 : 0
-                            }))
-                          }
-                          name={key}
-                        />
+                </TextField>
+              ) : type === 'radio' ? (
+                <Box 
+                sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 1 }}>
+                <RadioGroup
+                  name={key}
+                  value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
+                  onChange={(_, val) => {
+                    const numericValue = Number(val);
+                    setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
+                  }}
+                  sx={{
+                  flexDirection: { xs: 'column', sm: 'row', lg: 'row' } // Vertical for phones, horizontal for laptops
+                  }}
+                >
+                  {problemOptions.map(opt => (
+                  <FormControlLabel key={opt.value} value={opt.value} control={<Radio />} label={opt.label} />
+                  ))}
+                </RadioGroup>
+                </Box>
+              ) : type === 'switch' ? (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={entry[key] === 1}
+                      onChange={e =>
+                        setEntry((prev: typeof entry) => ({
+                          ...prev,
+                          [key]: e.target.checked ? 1 : 0
+                        }))
                       }
-                      label={entry[key] === 1 ? 'Yes' : 'No'}
+                      name={key}
                     />
-                  ) : null}
-                </FormControl>
-              ))}
+                  }
+                  label={entry[key] === 1 ? 'Yes' : 'No'}
+                />
+              ) : null}
+            </FormControl>
+          ))}
 
-              <TextField
-                label="Additional Notes"
-                name="notes"
-                value={entry.notes}
-                onChange={handleChange}
-                fullWidth
-                multiline
-                minRows={3}
-              />
+          <TextField
+            label="Additional Notes"
+            name="notes"
+            value={entry.notes}
+            onChange={handleChange}
+            fullWidth
+            multiline
+            minRows={3}
+          />
 
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                onClick={handleSubmit}
-                sx={{ backgroundColor: '#1565c0', '&:hover': { backgroundColor: '#0d47a1' } }}
-              >
-                Save Entry
-              </Button>
-            </Box>
-      )}      
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            onClick={handleSubmit}
+            sx={{ backgroundColor: '#1565c0', '&:hover': { backgroundColor: '#0d47a1' } }}
+          >
+            Save Entry
+          </Button>
+        </Box>
+      )}
+      {/* Snackbar */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={3000}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          elevation={6}
+          variant="filled"
+          onClose={() => setToast((t) => ({ ...t, open: false }))}
+          severity={toast.severity}
+          sx={{ width: '100%' }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>      
     </Box>
   );
 };

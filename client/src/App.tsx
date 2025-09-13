@@ -4,7 +4,6 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import DailyLog from './components/DailyLog';
 import Account from './pages/Account';
-import Baseline from './pages/Baseline';
 import WellnessProgram from './components/WelnessProgram';
 import AIAssistant from './components/AIAssistant';
 import Visualization from './components/Visualization';
@@ -19,7 +18,6 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/daily-log" element={<DailyLog />} />
           <Route path="/account" element={<Account />} />
-          <Route path="/baseline" element={<Baseline />} />
           <Route path="/wellness-program" element={<WellnessProgram />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
           <Route path="/visualization" element={<Visualization />} />

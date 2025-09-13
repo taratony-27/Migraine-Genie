@@ -3,9 +3,9 @@ import {
   Box, Typography, Avatar, Button, Paper, Grid, Divider,
   TextField, MenuItem, Snackbar, Alert
 } from '@mui/material';
-import axios from 'axios';
+import api from '../services/api';
 
-const Account: React.FC = () => {
+const Account: React.FC<{ }> = () => {
   const [user, setUser] = useState<{
     name: string;
     email: string;
@@ -24,6 +24,15 @@ const Account: React.FC = () => {
     severity: 'success',
   });
 
+  // Attach token to shared client once
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+  }, []);
+
+  // Hydrate from localStorage (same behavior as before)
   useEffect(() => {
     const stored = localStorage.getItem('user');
     if (stored) {
@@ -32,7 +41,7 @@ const Account: React.FC = () => {
         name: parsed.name,
         email: parsed.email,
         joined: parsed.joined || 'Unknown',
-        dateOfBirth: parsed.date_of_birth?.slice(0, 10) || '', // ISO to YYYY-MM-DD
+        dateOfBirth: parsed.date_of_birth?.slice(0, 10) || '', // ISO -> YYYY-MM-DD
         gender: parsed.gender || '',
         totalEntries: parsed.totalEntries ?? 0,
         recentIntensity: parsed.recentIntensity ?? 'N/A',
@@ -48,28 +57,56 @@ const Account: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      const res = await axios.put('http://localhost:3001/api/users/update', {
+      // Map camelCase -> snake_case where expected by backend
+      const payload = {
         name: editedUser.name,
-        dateOfBirth: editedUser.dateOfBirth,
-        gender: editedUser.gender,
-      }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+        date_of_birth: editedUser.dateOfBirth || null,
+        gender: editedUser.gender || null,
+      };
 
+      const res = await api.put('/api/users/update', payload);
+
+      // Some backends return {user: {...}}; others return the fields directly.
+      const returned = (res?.data?.user ?? res?.data) || {};
       const updated = {
         ...user,
-        ...res.data,
-        joined: user?.joined ?? 'Unknown', // fallback
-      };
+        // Prefer server values if present; fall back to what we just saved.
+        name: returned.name ?? payload.name ?? user?.name,
+        email: user?.email ?? returned.email, // usually email doesn't change here
+        joined: user?.joined ?? 'Unknown',
+        dateOfBirth:
+          (returned.date_of_birth ? String(returned.date_of_birth).slice(0, 10) : undefined) ??
+          editedUser.dateOfBirth ??
+          user?.dateOfBirth ??
+          '',
+        gender: returned.gender ?? editedUser.gender ?? user?.gender ?? '',
+        // preserve stats if server didn't include them
+        totalEntries: user?.totalEntries ?? 0,
+        recentIntensity: user?.recentIntensity ?? 'N/A',
+      } as typeof user;
+
       setUser(updated);
       setEditedUser(updated);
-      localStorage.setItem('user', JSON.stringify(updated));
+      localStorage.setItem('user', JSON.stringify({
+        ...JSON.parse(localStorage.getItem('user') || '{}'),
+        // keep original structure keys the rest of the app expects
+        name: updated?.name,
+        email: updated?.email,
+        joined: updated?.joined,
+        date_of_birth: updated?.dateOfBirth ? `${updated.dateOfBirth}T00:00:00` : null,
+        gender: updated?.gender,
+        totalEntries: updated?.totalEntries,
+        recentIntensity: updated?.recentIntensity,
+      }));
+
       setAlert({ open: true, message: 'Profile updated successfully', severity: 'success' });
       setEditMode(false);
     } catch (err: any) {
-      setAlert({ open: true, message: err?.response?.data?.message || 'Update failed', severity: 'error' });
+      setAlert({
+        open: true,
+        message: err?.response?.data?.message || 'Update failed',
+        severity: 'error',
+      });
     }
   };
 
@@ -86,7 +123,7 @@ const Account: React.FC = () => {
       <Paper elevation={6} sx={{ maxWidth: 700, width: '100%', padding: 4, borderRadius: 4, backgroundColor: '#ffffff' }}>
         <Box display="flex" alignItems="center" flexDirection="column" textAlign="center" mb={4}>
           <Avatar sx={{ width: 96, height: 96, bgcolor: '#1565c0', fontSize: 36 }}>
-            {user.name[0]}
+            {user.name?.[0] || '?'}
           </Avatar>
 
           {editMode ? (

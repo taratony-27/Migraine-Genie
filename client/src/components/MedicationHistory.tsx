@@ -7,7 +7,7 @@ import {
   Stack,
   Container,
 } from '@mui/material';
-import axios from 'axios';
+import api from '../services/api';
 
 interface MedicationEntry {
   _id: string;
@@ -26,17 +26,37 @@ const MedicationHistory: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const resolveUserId = () => {
+    const user = localStorage.getItem('user');
+    if (!user) return undefined;
+    try {
+      const parsed = JSON.parse(user);
+      return parsed?.user_id ?? parsed?.id ?? parsed?._id;
+    } catch {
+      return undefined;
+    }
+  };
+
   useEffect(() => {
     const fetchHistory = async () => {
+      setLoading(true);
       try {
-        const response = await axios.get<MedicationEntry[]>('http://localhost:3001/api/medications');
-        setHistory(response.data);
+        const userId = resolveUserId();
+
+        const response = await api.get<MedicationEntry[]>('/api/medications', {
+          params: userId ? { userId } : {},
+        });
+        setHistory(Array.isArray(response.data) ? response.data : []);
       } catch (err) {
         setError('Failed to fetch medication history');
       } finally {
         setLoading(false);
       }
     };
+
+    // attach token if present
+    const token = localStorage.getItem('token');
+    if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
     fetchHistory();
   }, []);
@@ -66,8 +86,8 @@ const MedicationHistory: React.FC = () => {
               </Typography>
               <Typography variant="body2">
                 Duration:{' '}
-                {new Date(entry.start_date).toLocaleDateString()} –{' '}
-                {new Date(entry.end_date).toLocaleDateString()}
+                {entry.start_date ? new Date(entry.start_date).toLocaleDateString() : '—'} –{' '}
+                {entry.end_date ? new Date(entry.end_date).toLocaleDateString() : '—'}
               </Typography>
               {entry.notes && (
                 <Typography variant="body2" mt={1}>

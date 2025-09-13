@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import {
   Box,
   Typography,
@@ -26,6 +25,7 @@ import {
 } from 'chart.js';
 
 import dayjs from 'dayjs';
+import api from '../services/api';
 
 ChartJS.register(
   CategoryScale,
@@ -43,12 +43,14 @@ type Entry = {
   log_date: string | Date;
   intensity?: 'Mild' | 'Moderate' | 'Severe' | string;
   duration?: string | number;
-  trigger?: {
-    potentialTrigger?: string | null;
-    weather?: string | null;
-    food?: string | null;
-    activity?: string | null;
-  } | null;
+  trigger?:
+    | {
+        potentialTrigger?: string | null;
+        weather?: string | null;
+        food?: string | null;
+        activity?: string | null;
+      }
+    | null;
   notes?: string | null;
   symptoms?: Record<string, string | number | null>;
 };
@@ -80,39 +82,47 @@ const card = {
 
 const ENTRY_MIN_HEIGHT = 220;
 
-// severity → chip colors
 const severityChip = (v: string | number | null | undefined) => {
   const s = typeof v === 'number' ? v : String(v || '').trim();
   const norm =
-    typeof s === 'number' ? s :
-    s.toLowerCase() === 'mild' ? 'Mild' :
-    s.toLowerCase() === 'moderate' ? 'Moderate' :
-    s.toLowerCase() === 'severe' ? 'Severe' :
-    s.toLowerCase() === 'yes' ? 'Yes' :
-    s.toLowerCase() === 'no' ? 'No' : '';
+    typeof s === 'number'
+      ? s
+      : s.toLowerCase() === 'mild'
+      ? 'Mild'
+      : s.toLowerCase() === 'moderate'
+      ? 'Moderate'
+      : s.toLowerCase() === 'severe'
+      ? 'Severe'
+      : s.toLowerCase() === 'yes'
+      ? 'Yes'
+      : s.toLowerCase() === 'no'
+      ? 'No'
+      : '';
 
   const colors: Record<string, { bg: string; fg: string }> = {
-    No:       { bg: '#E0E0E0', fg: '#1e293b' },
-    Mild:     { bg: '#D7EAF9', fg: '#0f172a' },
+    No: { bg: '#E0E0E0', fg: '#1e293b' },
+    Mild: { bg: '#D7EAF9', fg: '#0f172a' },
     Moderate: { bg: '#A9D7EF', fg: '#0f172a' },
-    Severe:   { bg: '#53B5E9', fg: '#0b1324' },
-    Yes:      { bg: '#A9D7EF', fg: '#0f172a' }, // treat Yes like Moderate
-    '':       { bg: '#E0E0E0', fg: '#1e293b' },
+    Severe: { bg: '#53B5E9', fg: '#0b1324' },
+    Yes: { bg: '#A9D7EF', fg: '#0f172a' },
+    '': { bg: '#E0E0E0', fg: '#1e293b' },
   };
 
   return colors[norm] ?? colors[''];
 };
 
-// pill renderer
 const SymptomPills: React.FC<{ symptoms?: Record<string, string | number | null> }> = ({ symptoms }) => {
   if (!symptoms || Object.keys(symptoms).length === 0) return null;
-  const items = Object.entries(symptoms)
-    .filter(([, v]) => v !== null && v !== '' && String(v).toLowerCase() !== 'no');
+  const items = Object.entries(symptoms).filter(
+    ([, v]) => v !== null && v !== '' && String(v).toLowerCase() !== 'no'
+  );
   if (items.length === 0) return null;
 
   return (
     <Box mt={1}>
-      <Typography variant="body2" sx={{ mb: 0.5 }}><strong>Symptoms:</strong></Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <strong>Symptoms:</strong>
+      </Typography>
       <Box display="flex" flexWrap="wrap" gap={1}>
         {items.map(([key, v]) => {
           const { bg, fg } = severityChip(v);
@@ -144,31 +154,50 @@ const Visualization: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // attach token if present
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  }, []);
+
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    axios.get('http://localhost:3001/api/daily-inputs/')
-      .then(res => {
+    const fetchEntries = async () => {
+      setLoading(true);
+      try {
+        // forward userId if available
+        const user = localStorage.getItem('user');
+        let userId: string | number | undefined;
+        if (user) {
+          try {
+            const parsed = JSON.parse(user);
+            userId = parsed?.user_id ?? parsed?.id ?? parsed?._id;
+          } catch {}
+        }
+
+        const res = await api.get<Entry[]>('/api/daily-inputs/', {
+          params: userId ? { userId } : {},
+        });
+
         if (!mounted) return;
-        setEntries(res.data || []);
+        setEntries(Array.isArray(res.data) ? res.data : []);
         setError(null);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Fetch failed:', err);
         if (!mounted) return;
         setError('Failed to load entries');
-      })
-      .finally(() => mounted && setLoading(false));
-    return () => { mounted = false; };
+      } finally {
+        mounted && setLoading(false);
+      }
+    };
+
+    fetchEntries();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const {
-    barDataFrequency,
-    barDataDuration,
-    lineData,
-    severityByDate,
-    topSymptoms,
-  } = useMemo(() => {
+  const { barDataFrequency, barDataDuration, lineData, severityByDate, topSymptoms } = useMemo(() => {
     const parsed = entries
       .filter((e) => e.log_date && e.intensity && e.duration !== undefined && e.duration !== null)
       .map((e) => {
@@ -205,7 +234,6 @@ const Visualization: React.FC = () => {
         const numeric = typeof val === 'number' ? val : severityMap[String(val)] ?? 0;
         total += numeric;
 
-        // Count frequency if it's not "No"/empty/0
         if (val !== null && val !== '' && valStr !== 'no' && numeric !== 0) {
           symptomCounts[name] = (symptomCounts[name] || 0) + 1;
         }
@@ -216,38 +244,44 @@ const Visualization: React.FC = () => {
 
     const topSymptoms = Object.entries(symptomCounts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6); // top 6
+      .slice(0, 6);
 
     return {
       barDataFrequency: {
         labels: Object.keys(intensityCounts),
-        datasets: [{
-          label: 'Frequency',
-          data: Object.values(intensityCounts),
-          backgroundColor: '#64b5f6',
-          borderRadius: 6,
-        }],
+        datasets: [
+          {
+            label: 'Frequency',
+            data: Object.values(intensityCounts),
+            backgroundColor: '#64b5f6',
+            borderRadius: 6,
+          },
+        ],
       },
       barDataDuration: {
         labels: Object.keys(intensityDurations),
-        datasets: [{
-          label: 'Total Duration (hrs)',
-          data: Object.values(intensityDurations),
-          backgroundColor: '#ef5350',
-          borderRadius: 6,
-        }],
+        datasets: [
+          {
+            label: 'Total Duration (hrs)',
+            data: Object.values(intensityDurations),
+            backgroundColor: '#ef5350',
+            borderRadius: 6,
+          },
+        ],
       },
       lineData: {
         labels: sortedDates,
-        datasets: [{
-          label: 'Daily Duration (hrs)',
-          data: sortedDates.map(d => dailyTotals[d]),
-          fill: false,
-          borderColor: '#42a5f5',
-          backgroundColor: '#42a5f5',
-          tension: 0.3,
-          pointRadius: 2,
-        }],
+        datasets: [
+          {
+            label: 'Daily Duration (hrs)',
+            data: sortedDates.map((d) => dailyTotals[d]),
+            fill: false,
+            borderColor: '#42a5f5',
+            backgroundColor: '#42a5f5',
+            tension: 0.3,
+            pointRadius: 2,
+          },
+        ],
       },
       severityByDate: sevByDate,
       topSymptoms,
@@ -267,8 +301,8 @@ const Visualization: React.FC = () => {
     return arr;
   }, [currentMonth, startOfMonth, endOfMonth]);
 
-  const handlePreviousMonth = () => setCurrentMonth(prev => prev.subtract(1, 'month'));
-  const handleNextMonth = () => setCurrentMonth(prev => prev.add(1, 'month'));
+  const handlePreviousMonth = () => setCurrentMonth((prev) => prev.subtract(1, 'month'));
+  const handleNextMonth = () => setCurrentMonth((prev) => prev.add(1, 'month'));
 
   const chartOptions = {
     responsive: true,
@@ -293,7 +327,9 @@ const Visualization: React.FC = () => {
   if (error) {
     return (
       <Box p={3}>
-        <Typography color="error" fontWeight="bold">{error}</Typography>
+        <Typography color="error" fontWeight="bold">
+          {error}
+        </Typography>
       </Box>
     );
   }
@@ -304,29 +340,34 @@ const Visualization: React.FC = () => {
         Migraine Entry Visualizations
       </Typography>
 
-      {/* KPI Cards (3rd card -> Most Frequent Symptoms) */}
+      {/* KPI Cards */}
       <Grid container spacing={2} mb={2}>
         <Grid item xs={12} sm={4}>
           <Paper sx={{ ...card, minHeight: 100 }}>
-            <Typography variant="body2" color="text.secondary">Total Entries</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total Entries
+            </Typography>
             <Typography variant="h5" fontWeight="bold">{entries.length}</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={4}>
           <Paper sx={{ ...card, minHeight: 100 }}>
-            <Typography variant="body2" color="text.secondary">Tracked Days</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Tracked Days
+            </Typography>
             <Typography variant="h5" fontWeight="bold">
-              {new Set(entries.map(e => dayjs(e.log_date).format('YYYY-MM-DD'))).size}
+              {new Set(entries.map((e) => dayjs(e.log_date).format('YYYY-MM-DD'))).size}
             </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={4}>
           <Paper sx={{ ...card, minHeight: 100, display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="body2" color="text.secondary">Top 3 Symptoms</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Top 3 Symptoms
+            </Typography>
             {(() => {
-              // Count symptom occurrences across all entries
               const symptomCounts: Record<string, number> = {};
-              entries.forEach(e => {
+              entries.forEach((e) => {
                 if (e.symptoms) {
                   Object.entries(e.symptoms).forEach(([symptom, value]) => {
                     if (value && String(value).toLowerCase() !== 'no') {
@@ -335,8 +376,6 @@ const Visualization: React.FC = () => {
                   });
                 }
               });
-
-              // Sort by frequency and take top 3
               const top3 = Object.entries(symptomCounts)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 3);
@@ -344,7 +383,9 @@ const Visualization: React.FC = () => {
               return (
                 <Box mt={1} display="flex" flexDirection="column" gap={0.5}>
                   {top3.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">—</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      —
+                    </Typography>
                   ) : (
                     top3.map(([symptom, count]) => (
                       <Typography key={symptom} variant="body2">
@@ -359,55 +400,75 @@ const Visualization: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Charts (2×2 feel: 2 wide + 1 full width) */}
+      {/* Charts */}
       <Grid container spacing={2} mb={3}>
         <Grid item xs={12} md={6}>
           <Paper sx={{ ...card, minHeight: 260 }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Frequency by Intensity</Typography>
-            <Box height={200}><Bar data={barDataFrequency} options={chartOptions} /></Box>
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+              Frequency by Intensity
+            </Typography>
+            <Box height={200}>
+              <Bar data={barDataFrequency} options={chartOptions} />
+            </Box>
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
           <Paper sx={{ ...card, minHeight: 260 }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Total Duration by Intensity</Typography>
-            <Box height={200}><Bar data={barDataDuration} options={chartOptions} /></Box>
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+              Total Duration by Intensity
+            </Typography>
+            <Box height={200}>
+              <Bar data={barDataDuration} options={chartOptions} />
+            </Box>
           </Paper>
         </Grid>
         <Grid item xs={12}>
           <Paper sx={{ ...card, minHeight: 260 }}>
-            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Daily Duration Over Time</Typography>
-            <Box height={200}><Line data={lineData} options={chartOptions} /></Box>
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+              Daily Duration Over Time
+            </Typography>
+            <Box height={200}>
+              <Line data={lineData} options={chartOptions} />
+            </Box>
           </Paper>
         </Grid>
       </Grid>
 
       {/* Calendar Heatmap */}
-      <Typography variant="h6" fontWeight="bold" gutterBottom>Symptom Intensity Calendar Heatmap</Typography>
+      <Typography variant="h6" fontWeight="bold" gutterBottom>
+        Symptom Intensity Calendar Heatmap
+      </Typography>
       <Paper sx={{ ...card, mb: 3 }}>
         <Box display="flex" justifyContent="center" alignItems="center" mb={2} gap={2}>
-          <Button variant="outlined" size="small" onClick={handlePreviousMonth}>Prev</Button>
+          <Button variant="outlined" size="small" onClick={handlePreviousMonth}>
+            Prev
+          </Button>
           <Typography variant="h6" fontWeight="bold" sx={{ minWidth: 180, textAlign: 'center' }}>
             {currentMonth.format('MMMM YYYY')}
           </Typography>
-          <Button variant="outlined" size="small" onClick={handleNextMonth}>Next</Button>
+          <Button variant="outlined" size="small" onClick={handleNextMonth}>
+            Next
+          </Button>
         </Box>
 
         <Grid container spacing={1} sx={{ mb: 1 }}>
-          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((wd) => (
-            <Grid item xs={12/7} key={wd}>
-              <Typography variant="caption" fontWeight="bold">{wd}</Typography>
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((wd) => (
+            <Grid item xs={12 / 7 as any} key={wd}>
+              <Typography variant="caption" fontWeight="bold">
+                {wd}
+              </Typography>
             </Grid>
           ))}
         </Grid>
 
         <Grid container spacing={1}>
           {calendarDays.map((day, idx) => {
-            if (!day) return <Grid item xs={12/7} key={`empty-${idx}`} />;
+            if (!day) return <Grid item xs={12 / 7 as any} key={`empty-${idx}`} />;
             const dateStr = day.format('YYYY-MM-DD');
             const severity = severityByDate[dateStr] || 0;
             const isSelected = selectedDate === dateStr;
             return (
-              <Grid item xs={12/7} key={dateStr}>
+              <Grid item xs={12 / 7 as any} key={dateStr}>
                 <Tooltip title={`Severity Sum: ${severity}`} arrow>
                   <Paper
                     onClick={() => setSelectedDate(dateStr)}
@@ -424,7 +485,9 @@ const Visualization: React.FC = () => {
                       '&:hover': { transform: 'translateY(-1px)' },
                     }}
                   >
-                    <Typography variant="caption" fontWeight="bold">{day.date()}</Typography>
+                    <Typography variant="caption" fontWeight="bold">
+                      {day.date()}
+                    </Typography>
                   </Paper>
                 </Tooltip>
               </Grid>
@@ -451,7 +514,6 @@ const Visualization: React.FC = () => {
         </Grid>
       </Paper>
 
-      {/* Entry lists unchanged */}
       {selectedDate && (
         <Box mb={3}>
           <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
@@ -461,9 +523,26 @@ const Visualization: React.FC = () => {
             {entries
               .filter((e) => dayjs(e.log_date).format('YYYY-MM-DD') === selectedDate)
               .map((entry) => (
-                <Grid item xs={12} md={6} key={entry.log_id ?? `${entry.log_date}-${Math.random()}`} sx={{ display: 'flex' }}>
-                  <Paper sx={{ ...card, bgcolor: '#F2F8FD', minHeight: ENTRY_MIN_HEIGHT, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Typography variant="subtitle2" fontWeight="bold">Intensity: {entry.intensity || '—'}</Typography>
+                <Grid
+                  item
+                  xs={12}
+                  md={6}
+                  key={entry.log_id ?? `${entry.log_date}-${Math.random()}`}
+                  sx={{ display: 'flex' }}
+                >
+                  <Paper
+                    sx={{
+                      ...card,
+                      bgcolor: '#F2F8FD',
+                      minHeight: ENTRY_MIN_HEIGHT,
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      Intensity: {entry.intensity || '—'}
+                    </Typography>
                     <Typography variant="body2">Duration: {entry.duration || '—'} hrs</Typography>
                     <Box mt={1} display="flex" flexWrap="wrap" gap={1}>
                       {(entry?.trigger?.potentialTrigger ? [entry.trigger.potentialTrigger] : [])
@@ -471,10 +550,16 @@ const Visualization: React.FC = () => {
                         .concat(entry?.trigger?.food ? [entry.trigger.food] : [])
                         .concat(entry?.trigger?.activity ? [entry.trigger.activity] : [])
                         .filter(Boolean)
-                        .map((t) => <Chip key={t as string} label={t as string} size="small" />)}
-                      {(!entry.trigger || formatTrigger(entry.trigger) === '—') && <Chip label="No triggers" size="small" variant="outlined" />}
+                        .map((t) => (
+                          <Chip key={t as string} label={t as string} size="small" />
+                        ))}
+                      {(!entry.trigger || formatTrigger(entry.trigger) === '—') && (
+                        <Chip label="No triggers" size="small" variant="outlined" />
+                      )}
                     </Box>
-                    <Typography variant="body2" sx={{ mt: 1 }}><strong>Notes:</strong> {entry.notes || '—'}</Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong>Notes:</strong> {entry.notes || '—'}
+                    </Typography>
                     <SymptomPills symptoms={entry.symptoms} />
                   </Paper>
                 </Grid>
@@ -483,14 +568,31 @@ const Visualization: React.FC = () => {
         </Box>
       )}
 
-      <Typography variant="h5" fontWeight="bold" gutterBottom>All Entries</Typography>
+      <Typography variant="h5" fontWeight="bold" gutterBottom>
+        All Entries
+      </Typography>
       <Grid container spacing={2} alignItems="stretch">
         {entries
           .slice()
           .sort((a, b) => +new Date(a.log_date) - +new Date(b.log_date))
           .map((entry) => (
-            <Grid item xs={12} md={6} key={entry.log_id ?? `${entry.log_date}-${Math.random()}`} sx={{ display: 'flex' }}>
-              <Paper sx={{ ...card, bgcolor: '#fafafa', minHeight: ENTRY_MIN_HEIGHT, flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              key={entry.log_id ?? `${entry.log_date}-${Math.random()}`}
+              sx={{ display: 'flex' }}
+            >
+              <Paper
+                sx={{
+                  ...card,
+                  bgcolor: '#fafafa',
+                  minHeight: ENTRY_MIN_HEIGHT,
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
                 <Typography variant="subtitle1" fontWeight="bold">
                   {new Date(entry.log_date).toLocaleDateString()} — {entry.intensity || '—'}
                 </Typography>
@@ -501,10 +603,16 @@ const Visualization: React.FC = () => {
                     .concat(entry?.trigger?.food ? [entry.trigger.food] : [])
                     .concat(entry?.trigger?.activity ? [entry.trigger.activity] : [])
                     .filter(Boolean)
-                    .map((t) => <Chip key={t as string} label={t as string} size="small" />)}
-                  {(!entry.trigger || formatTrigger(entry.trigger) === '—') && <Chip label="No triggers" size="small" variant="outlined" />}
+                    .map((t) => (
+                      <Chip key={t as string} label={t as string} size="small" />
+                    ))}
+                  {(!entry.trigger || formatTrigger(entry.trigger) === '—') && (
+                    <Chip label="No triggers" size="small" variant="outlined" />
+                  )}
                 </Box>
-                <Typography variant="body2" sx={{ mt: 1 }}><strong>Notes:</strong> {entry.notes || '—'}</Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>Notes:</strong> {entry.notes || '—'}
+                </Typography>
                 <SymptomPills symptoms={entry.symptoms} />
               </Paper>
             </Grid>
