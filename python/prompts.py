@@ -1,31 +1,740 @@
-WORKOUT_SYSTEM = """You are SmartCoach AI, a realistic fitness and nutrition planner. 
-Keep workouts safe, practical, and easy to follow for beginners.
-Always explain progression and keep the plan aligned with healthy, sustainable weight loss."""
+MG_SYSTEM = """You are an AI assistant that analyzes migraine diary data and produces a weekly forecast of migraine probabilities. 
+Your role is not to provide medical diagnoses but to help users identify patterns and trends in their migraines. 
+You always give numerical probabilities (0–100%) for each day of the upcoming 7-day period, and a short explanation for why you predicted that probability. 
+You base predictions only on the information provided in the user’s diary, such as symptoms, triggers, frequency, and timing. 
+Do not invent new information. Do not guarantee outcomes. 
+Be concise, structured, and consistent in your output format so it can be easily parsed by an app."""
 
-WORKOUT_USER = """TASK: Create a combined workout + meal plan.
+MG_USER = """TASK: Using only the patterns from my migraine diary data, generate a 7-day migraine probability forecast.  
+For each of the next 7 days:  
+- Provide the migraine risk level (1-10) that I will experience a migraine  
+- Include a short explanation (2–3 sentences) that connects the probability to observed patterns in the diary (e.g., recurring triggers, time of week, frequency trends, symptom build-up, etc.)  
+.
+-Tell me which trigger is a more significant factor in my migraine pattern.
 
 User Info:
-- Age: 22
-- Status: Just started working (beginner fitness level)
-- Goal: Lose 3kg in 3 months
-- Workout time available: 2 hours per day
-- Equipment: Dumbbells + Bodyweight
-- Duration: 12 weeks (3 months)
-
-Requirements:
-1. Workout Plan:
-   - Structure as a weekly schedule.
-   - 4–5 sessions per week, ≤120 minutes/session.
-   - Include warm-up, main exercises, sets, reps, rest.
-   - Explain weekly progression and add recovery days.
-
-2. Meal Plan:
-   - Daily calorie target appropriate for sustainable fat loss (~0.5–1 kg/week).
-   - Balance protein, carbs, fats (protein ~1.6–2 g/kg body weight).
-   - Give a 1-day example meal plan and grocery list.
-   - Keep meals simple, affordable, and easy to prep.
-
-OUTPUT FORMAT:
-- "Workout Plan": structured weekly program with progression notes.
-- "Meal Plan": daily meals, macros, grocery list.
+[
+  {
+    "log_date": "2024-07-17",
+    "duration": 8,
+    "intensity": "Moderate",
+    "symptoms": {
+      "imbalance": "Moderate",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "Moderate",
+      "motionSensitivity": "Moderate",
+      "soundDiscomfort": "Moderate",
+      "lightsDiscomfort": "Moderate",
+      "lightheadedness": "Mild",
+      "earPressure": "Moderate",
+      "nausea": "Moderate",
+      "fatigue": "Mild",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "Mild",
+      "movementSensation": "Moderate",
+      "walkingDifficulty": "Mild",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "Moderate",
+      "concentratingDifficulty": "Moderate",
+      "stress": "Moderate",
+      "sadness": "Moderate",
+      "anxiety": "Moderate",
+      "abnormalLifeFear": "Moderate",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "Yes"
+    },
+    "trigger": {
+      "weather": "Sunny",
+      "food": "Banana, Avocado, Milk, Cheese, Chocolate",
+      "other": "Lack of sleep"
+    },
+    "notes": "feel worse symptoms in large open areas"
+  },
+  {
+    "log_date": "2024-07-18",
+    "duration": 4,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "No",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "Mild",
+      "lightsDiscomfort": "Mild",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Mild",
+      "headaches": "No",
+      "memoryDifficulty": "Mild",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "Mild",
+      "abnormalLifeFear": "Mild",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "Sunny",
+      "food": "Banana, Avocado, Milk, Cheese, Chocolate",
+      "other": "Lack of sleep, Noise"
+    },
+    "notes": ""
+  },
+  {
+    "log_date": "2024-07-19",
+    "duration": 5,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "No",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "Mild",
+      "lightsDiscomfort": "Mild",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Mild",
+      "headaches": "No",
+      "memoryDifficulty": "Mild",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "Mild",
+      "abnormalLifeFear": "Mild",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "Sunny",
+      "food": "Milk, Chocolate",
+      "other": "Lack of sleep, Noise"
+    },
+    "notes": ""
+  },
+  {
+    "log_date": "2024-07-20",
+    "duration": 3,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "No",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "Mild",
+      "lightsDiscomfort": "Mild",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Mild",
+      "headaches": "No",
+      "memoryDifficulty": "Mild",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "Mild",
+      "abnormalLifeFear": "Mild",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "Sunny",
+      "food": "Banana, Avocado, Milk, Cheese, Chocolate",
+      "other": "Lack of sleep, Noise"
+    },
+    "notes": ""
+  },
+  {
+    "log_date": "2024-07-21",
+    "duration": 8,
+    "intensity": "Moderate",
+    "symptoms": {
+      "imbalance": "Moderate",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Moderate",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "Moderate",
+      "lightsDiscomfort": "Moderate",
+      "lightheadedness": "No",
+      "earPressure": "Severe",
+      "nausea": "Moderate",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "Moderate",
+      "memoryDifficulty": "Mild",
+      "movementSensation": "No",
+      "walkingDifficulty": "Moderate",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "Moderate",
+      "concentratingDifficulty": "Moderate",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "Moderate",
+      "abnormalLifeFear": "Moderate",
+      "fallingFear": "Yes",
+      "socialSituationAvoidance": "Yes"
+    },
+    "trigger": {
+      "weather": "Sunny",
+      "food": "Chocolate",
+      "other": "Lack of sleep, Noise"
+    },
+    "notes": ""
+  },
+  {
+    "log_date": "2024-02-12",
+    "duration": 2,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "No",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Mild",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "Mild",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": "Ear popping is there but not that bad."
+  },
+  {
+    "log_date": "2024-02-12",
+    "duration": 6,
+    "intensity": "Severe",
+    "symptoms": {
+      "imbalance": "No",
+      "spinningSensation": "No",
+      "headBodyDizziness": "No",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Severe",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Severe",
+      "headaches": "Severe",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "No",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": "Ears popping a lot"
+  },
+  {
+    "log_date": "2024-02-13",
+    "duration": 1,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "No",
+      "spinningSensation": "No",
+      "headBodyDizziness": "No",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Mild",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "No",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": "slight ear popping"
+  },
+  {
+    "log_date": "2024-02-13",
+    "duration": 3,
+    "intensity": "Moderate",
+    "symptoms": {
+      "imbalance": "No",
+      "spinningSensation": "No",
+      "headBodyDizziness": "No",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "Mild",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "Moderate",
+      "concentratingDifficulty": "Moderate",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": "slight ear popping"
+  },
+  {
+    "log_date": "2024-02-14",
+    "duration": 2,
+    "intensity": "Moderate",
+    "symptoms": {
+      "imbalance": "No",
+      "spinningSensation": "No",
+      "headBodyDizziness": "No",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "Mild",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "Moderate",
+      "concentratingDifficulty": "Moderate",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": "slight ear popping"
+  },
+  {
+    "log_date": "2024-05-03",
+    "duration": 4,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Mild",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "Sunny",
+      "food": "",
+      "other": ""
+    },
+    "notes": ""
+  },
+  {
+    "log_date": "2024-05-04",
+    "duration": 3,
+    "intensity": "Moderate",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Moderate",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "No",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "Sunny",
+      "food": "",
+      "other": ""
+    },
+    "notes": "Felt better after taking shower and eating food."
+  },
+  {
+    "log_date": "2024-05-05",
+    "duration": 4,
+    "intensity": "Moderate",
+    "symptoms": {
+      "imbalance": "Moderate",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "No",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": "Lack of sleep"
+    },
+    "notes": "Felt a little off balance while looking at computer screen, felt off balance when making quick turns in stores and lot of ppl around."
+  },
+  {
+    "log_date": "2024-05-06",
+    "duration": 4,
+    "intensity": "Moderate",
+    "symptoms": {
+      "imbalance": "Moderate",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "Windy",
+      "food": "",
+      "other": ""
+    },
+    "notes": "Went on bart to berkeley, went on a walk when windy outside, felt off-balance when talking to others"
+  },
+  {
+    "log_date": "2024-05-07",
+    "duration": 8,
+    "intensity": "Moderate",
+    "symptoms": {
+      "imbalance": "Moderate",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Severe",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "Windy",
+      "food": "",
+      "other": ""
+    },
+    "notes": "felt off balance when staring at computer screen for a 4 hour exam, head pressure got much worse after going on a walk"
+  },
+  {
+    "log_date": "2024-05-08",
+    "duration": 3,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "No",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": "Head pressure and off balance increased some more when I went to my exam room today"
+  },
+  {
+    "log_date": "2024-05-09",
+    "duration": 4,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "No",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": ""
+  },
+  {
+    "log_date": "2024-05-10",
+    "duration": 6,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": "Went on a hike"
+  },
+  {
+    "log_date": "2024-05-11",
+    "duration": 5,
+    "intensity": "Mild",
+    "symptoms": {
+      "imbalance": "Mild",
+      "spinningSensation": "No",
+      "headBodyDizziness": "Mild",
+      "visualSceneDizziness": "No",
+      "motionSensitivity": "No",
+      "soundDiscomfort": "No",
+      "lightsDiscomfort": "No",
+      "lightheadedness": "No",
+      "earPressure": "Mild",
+      "nausea": "No",
+      "fatigue": "No",
+      "headPressure": "Moderate",
+      "headaches": "No",
+      "memoryDifficulty": "No",
+      "movementSensation": "No",
+      "walkingDifficulty": "No",
+      "stairsDifficulty": "No",
+      "reducedProductivity": "No",
+      "concentratingDifficulty": "Mild",
+      "stress": "No",
+      "sadness": "No",
+      "anxiety": "No",
+      "abnormalLifeFear": "No",
+      "fallingFear": "No",
+      "socialSituationAvoidance": "No"
+    },
+    "trigger": {
+      "weather": "",
+      "food": "",
+      "other": ""
+    },
+    "notes": "Took an exam, did packing and cleaning"
+  }
+]
 """

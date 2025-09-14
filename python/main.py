@@ -1,5 +1,6 @@
 import os, time, json, requests
 from dotenv import load_dotenv
+from prompts import MG_SYSTEM, MG_USER
 
 # --- Setup ---
 load_dotenv()
@@ -12,11 +13,11 @@ HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json",
     "HTTP-Referer": "http://localhost",  # required by OpenRouter
-    "X-Title": "SmartCoach Test",         # required by OpenRouter
+    "X-Title": "Migraine Genie Test",         # required by OpenRouter
 }
 
 # Allow overriding the model via env; fall back to your choice
-MODEL_ID = os.getenv("OR_MODEL_ID", "openai/gpt-oss-120b:free")
+MODEL_ID = os.getenv("OR_MODEL_LIST","openai/gpt-oss-120b:free")
 
 
 # --- Helpers ---
@@ -101,8 +102,8 @@ print(f"Using model: {MODEL_ID}\n")
 payload = {
     "model": MODEL_ID,
     "messages": [
-        {"role": "system", "content": "You are a helpful fitness assistant."},
-        {"role": "user", "content": "Give me 3 simple workout tips for beginners."},
+        {"role": "system", "content": MG_SYSTEM},
+        {"role": "user", "content": MG_USER},
     ],
     # Nudge providers to return plain text in message.content
     "response_format": {"type": "text"},
