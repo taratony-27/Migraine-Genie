@@ -6,6 +6,8 @@ import {
   Stack,
   Button,
   Paper,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import MedicationHistory from './MedicationHistory';
 import { useTheme, useMediaQuery } from '@mui/material';
@@ -25,6 +27,15 @@ const Medication: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success', // Can be 'success', 'error', 'warning', or 'info'
+  });
 
   // attach token if present
   useEffect(() => {
@@ -64,7 +75,13 @@ const Medication: React.FC = () => {
 
       await api.post('/api/medications', payload, { params: { userId } });
 
-      alert('Medication saved successfully.');
+      // Show success notification
+      setSnackbar({
+        open: true,
+        message: 'Medication has been saved successfully!',
+        severity: 'success',
+      });
+
       setForm({
         medication_name: '',
         dosage: '',
@@ -75,10 +92,20 @@ const Medication: React.FC = () => {
       });
     } catch (error) {
       console.error('Save failed:', error);
-      alert('Failed to save medication.');
+
+      // Show error notification
+      setSnackbar({
+        open: true,
+        message: 'Failed to save medication.',
+        severity: 'error',
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
   return (
@@ -217,6 +244,22 @@ const Medication: React.FC = () => {
           <MedicationHistory />
         </Box>
       )}
+
+      {/* Snackbar for Notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
