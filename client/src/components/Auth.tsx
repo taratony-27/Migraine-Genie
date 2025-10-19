@@ -129,6 +129,9 @@ const Auth: React.FC<AuthProps> = () => {
                 InputLabelProps={{ shrink: true }}
                 value={formData.dateOfBirth}
                 onChange={handleChange}
+                inputProps={{
+                  max: new Date().toISOString().split('T')[0], // Prevent future dates
+                }}
               />
               <TextField
                 label="Gender"
@@ -217,3 +220,4 @@ const Auth: React.FC<AuthProps> = () => {
 };
 
 export default Auth;
+

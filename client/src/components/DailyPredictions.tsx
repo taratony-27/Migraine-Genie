@@ -1,13 +1,45 @@
-import React from 'react';
-import { Box, Typography, Grid, Paper } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Grid, Paper, CircularProgress } from '@mui/material';
+import api from '../services/api'; // adjust path if needed
 
-// Utility to get today's weekday string (e.g., "Mon", "Tue", etc.)
 const getToday = () => {
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
 };
 
-const DailyPredictions: React.FC = () => {
+const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId }) => {
   const today = getToday();
+  const [entryCount, setEntryCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch daily log count for the user
+    api
+      .get(`/api/daily-inputs/my/count?userId=${userId}`)
+      .then((res) => {
+        console.log('Entry count:', res.data.count);
+        setEntryCount(res.data.count);
+      })
+      .catch(() => setEntryCount(0))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (entryCount !== null && entryCount < 10) {
+    return (
+      <Box display="flex" flexDirection="column" alignItems="center" mt={4}>
+        <Typography variant="h6" color="textSecondary">
+          Add 10 or more daily log entries to see trigger predictions.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box display="flex" flexDirection="column" gap={2}>

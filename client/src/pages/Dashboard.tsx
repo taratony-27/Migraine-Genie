@@ -18,7 +18,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import DailyLog from '../components/DailyLog';
 import DailyPredictions from '../components/DailyPredictions';
 import Medication from '../components/Medication';
-import WellnessProgram from '../components/WelnessProgram';
+import WellnessProgram from '../components/WellnessProgram';
 import AIAssistant from '../components/AIAssistant';
 import Visualization from '../components/Visualization';
 
@@ -170,7 +170,7 @@ const Dashboard: React.FC = () => {
     switch (activeTab) {
       case 'Daily Log':
         // PASS userId down
-        return <DailyLog userId={userId ?? 1} />;
+        return userId ? <DailyLog userId={userId} />: <Typography>Please log in.</Typography>;
       case 'Wellness Program':
         return <WellnessProgram />;
       case 'Medication':
@@ -181,7 +181,7 @@ const Dashboard: React.FC = () => {
         return <Visualization />;
       case 'Trigger Prediction':
       default:
-        return <DailyPredictions />;
+        return <DailyPredictions userId={userId} />;
     }
   };
 

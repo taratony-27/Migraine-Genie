@@ -80,13 +80,8 @@ export const getMyDailyInputCount = async (req: Request, res: Response): Promise
       return;
     }
 
-    const agg = await DailyInput.aggregate<{ days: number }>([
-      { $match: { user_id: userId } }, // [MODIFIED] numeric user_id
-      { $group: { _id: { $dateTrunc: { date: '$log_date', unit: 'day' } } } },
-      { $count: 'days' },
-    ]);
-
-    const count = agg?.[0]?.days ?? 0;
+    // Count ALL entries for this user
+    const count = await DailyInput.countDocuments({ user_id: userId });
     const canPredict = count >= 10;
 
     res.json({ count, canPredict });
@@ -178,3 +173,4 @@ export const deleteDailyInput = async (req: Request, res: Response): Promise<voi
     res.status(500).json({ message: 'Failed to delete entry', error });
   }
 };
+

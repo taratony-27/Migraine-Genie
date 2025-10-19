@@ -4,7 +4,7 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import DailyLog from './components/DailyLog';
 import Account from './pages/Account';
-import WellnessProgram from './components/WelnessProgram';
+import WellnessProgram from './components/WellnessProgram';
 import AIAssistant from './components/AIAssistant';
 import Visualization from './components/Visualization';
 import Layout from './components/Layout';
