@@ -1,3 +1,4 @@
+'''
 import os, time, json, requests
 from dotenv import load_dotenv
 from prompts import MG_SYSTEM, MG_USER
@@ -128,3 +129,5 @@ if reply:
 else:
     print("⚠️ Empty content. Raw JSON for debugging:\n")
     print(json.dumps(data, ensure_ascii=False, indent=2))
+
+'''

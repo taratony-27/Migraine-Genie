@@ -1,149 +1,184 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Grid, Paper, CircularProgress } from '@mui/material';
-import api from '../services/api'; // adjust path if needed
+import api from '../services/api'; 
 
-const getToday = () => {
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
-};
+// Define what the AI sends us
+interface PredictionData {
+  triggers: { icon: string; label: string; risk: string }[];
+  forecast: { day: string; risk: string }[];
+  recommendations: string[];
+}
 
 const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId }) => {
-  const today = getToday();
+  // State for data
   const [entryCount, setEntryCount] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [predictions, setPredictions] = useState<PredictionData | null>(null);
+  
+  // State for UI status
+  const [loadingCount, setLoadingCount] = useState(true);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch daily log count for the user
-    api
-      .get(`/api/daily-inputs/my/count?userId=${userId}`)
-      .then((res) => {
-        console.log('Entry count:', res.data.count);
-        setEntryCount(res.data.count);
-      })
-      .catch(() => setEntryCount(0))
-      .finally(() => setLoading(false));
+    if (!userId) return;
+
+    const initData = async () => {
+      try {
+        setLoadingCount(true);
+        // 1. Check how many entries user has
+        const countRes = await api.get(`/api/daily-inputs/my/count?userId=${userId}`);
+        const count = countRes.data.count;
+        setEntryCount(count);
+
+        console.log(`User has ${count} entries.`);
+
+        // 2. If 10+, fetch the AI prediction
+        if (count >= 10) {
+           await generatePredictions();
+        }
+      } catch (e) {
+        console.error("Initialization error:", e);
+        setEntryCount(0);
+      } finally {
+        setLoadingCount(false);
+      }
+    };
+
+    initData();
   }, [userId]);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
-        <CircularProgress />
-      </Box>
-    );
+  const generatePredictions = async () => {
+    try {
+      setGeneratingAI(true);
+      setErrorMsg(null); // Clear previous errors
+
+      console.log("📡 Calling AI Backend...");
+      const res = await api.get(`/api/predictions/generate?userId=${userId}`);
+      
+      console.log("✅ AI Response:", res.data);
+
+      // Check if backend returned the specific "not enough data" object
+      if (res.data.notEnoughData) {
+        console.warn("Backend says: Not enough recent data to generate.");
+        return; 
+      }
+
+      // Check if the response actually has the data we need
+      if (res.data.forecast && res.data.triggers) {
+        setPredictions(res.data);
+      } else {
+        console.error("Invalid data format received:", res.data);
+        setErrorMsg("Received incomplete data from Genie.");
+      }
+
+    } catch (error) {
+      console.error("❌ Error getting AI predictions:", error);
+      setErrorMsg("Failed to load predictions. Please try again later.");
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
+  // --- RENDER 1: Initial Loading ---
+  if (loadingCount) {
+    return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
   }
 
+  // --- RENDER 2: Not Enough Entries ---
   if (entryCount !== null && entryCount < 10) {
     return (
       <Box display="flex" flexDirection="column" alignItems="center" mt={4}>
         <Typography variant="h6" color="textSecondary">
-          Add 10 or more daily log entries to see trigger predictions.
+          Current Entries: {entryCount} / 10
+        </Typography>
+        <Typography variant="body1">
+          Log {10 - entryCount} more days to unlock AI predictions.
         </Typography>
       </Box>
     );
   }
 
+  // --- RENDER 3: AI is thinking (only if we don't have predictions yet) ---
+  if (generatingAI && !predictions) {
+    return (
+      <Box display="flex" flexDirection="column" alignItems="center" p={4}>
+        <CircularProgress size={24} />
+        <Typography variant="body2" mt={2}>Consulting the Migraine Genie...</Typography>
+      </Box>
+    );
+  }
+
+  // --- RENDER 4: Main Content ---
   return (
     <Box display="flex" flexDirection="column" gap={2}>
-      {/* Risk Status */}
-      <Typography variant="h6" fontWeight="bold" color="error">
-        High Likelihood of Migraine Today
-      </Typography>
-      <Typography variant="body2" color="textSecondary">
-        Based on recent patterns and environmental factors, these are your potential triggers:
+      <Typography variant="h6" fontWeight="bold" color="primary">
+        AI Forecast
       </Typography>
 
-      {/* Trigger Cards */}
-      <Grid container spacing={2}>
-        {[
-          { icon: "🛌", label: "Lack of Sleep", risk: "High Risk" },
-          { icon: "🌡️", label: "Weather Change", risk: "Medium Risk" },
-          { icon: "💧", label: "Dehydration", risk: "Low Risk" },
-        ].map((trigger, index) => (
-          <Grid item xs={12} sm={4} key={index}> {/* <-- Responsive here */}
-            <Paper
-              elevation={2}
-              sx={{
-                p: 1,
-                textAlign: 'center',
-                borderRadius: 2,
-                bgcolor: "#f9f9f9",
-              }}
-            >
-              <Typography variant="h3">{trigger.icon}</Typography>
-              <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                {trigger.label}
-              </Typography>
-              <Typography
-                variant="caption"
-                color={
-                  trigger.risk.includes("High")
-                    ? "error"
-                    : trigger.risk.includes("Medium")
-                    ? "warning.main"
-                    : "success.main"
-                }
-              >
-                {trigger.risk}
-              </Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+      {/* ERROR MESSAGE DISPLAY */}
+      {errorMsg && (
+        <Paper sx={{ p: 2, bgcolor: '#ffebee', border: '1px solid #ffcdd2' }}>
+          <Typography color="error" variant="body2">
+            ⚠️ {errorMsg}
+          </Typography>
+        </Paper>
+      )}
 
-      {/* Migraine Risk Forecast */}
-      <Box mt={3}>
-        <Typography variant="subtitle1" fontWeight="bold" mb={1}>
-          Migraine Risk Forecast
-        </Typography>
-        <Grid container spacing={1} justifyContent="center">
-          {[
-            { day: "Sun", risk: "30%" },
-            { day: "Mon", risk: "40%" },
-            { day: "Tue", risk: "80%" },
-            { day: "Wed", risk: "50%" },
-            { day: "Thu", risk: "60%" },
-            { day: "Fri", risk: "50%" },
-            { day: "Sat", risk: "35%" },
-          ].map((forecast, index) => {
-            const isToday = forecast.day === today;
-            return (
-              <Grid item key={index}>
-                <Paper
-                  elevation={isToday ? 4 : 1}
-                  sx={{
-                    p: 1,
-                    width: 60,
-                    height: 60,
-                    borderRadius: "50%",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    bgcolor: isToday ? "#ffe0e0" : "#f0f0f0",
-                    border: isToday ? "2px solid #ff5252" : "none",
-                  }}
-                >
-                  <Typography variant="body2" fontWeight="bold">
-                    {forecast.risk}
+      {/* PREDICTION CONTENT */}
+      {predictions && (
+        <>
+          {/* Triggers */}
+          <Typography variant="body2" color="textSecondary">Potential Triggers:</Typography>
+          <Grid container spacing={2}>
+            {predictions.triggers.map((trigger, index) => (
+              <Grid item xs={12} sm={4} key={index}>
+                <Paper sx={{ p: 1, textAlign: 'center', bgcolor: "#f9f9f9" }}>
+                  <Typography variant="h3">{trigger.icon}</Typography>
+                  <Typography variant="subtitle2" fontWeight="bold">{trigger.label}</Typography>
+                  <Typography variant="caption" 
+                    color={trigger.risk.includes("High") ? "error" : "textSecondary"}>
+                    {trigger.risk}
                   </Typography>
-                  <Typography variant="caption">{forecast.day}</Typography>
                 </Paper>
               </Grid>
-            );
-          })}
-        </Grid>
-      </Box>
+            ))}
+          </Grid>
 
-      {/* Recommendations */}
-      <Box mt={3}>
-        <Typography variant="subtitle1" fontWeight="bold" mb={1}>
-          Recommendations
-        </Typography>
-        <Box component="ul" pl={2}>
-          <li>Increase water intake today</li>
-          <li>Aim for 7+ hours of sleep tonight</li>
-          <li>Reduce screen time in the evening</li>
-        </Box>
-      </Box>
+          {/* Week Forecast */}
+          <Box mt={3}>
+            <Typography variant="subtitle1" fontWeight="bold">7-Day Forecast</Typography>
+            <Grid container spacing={1} justifyContent="center">
+              {predictions.forecast.map((item, index) => {
+                 // specific check for high risk to color it red
+                 const riskVal = parseInt(item.risk) || 0;
+                 return (
+                  <Grid item key={index}>
+                    <Paper sx={{ 
+                        p: 1, width: 60, height: 60, borderRadius: "50%", 
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        border: riskVal > 50 ? "2px solid #ff5252" : "1px solid #ddd",
+                        bgcolor: riskVal > 50 ? "#fff0f0" : "#fff"
+                      }}>
+                      <Typography variant="body2" fontWeight="bold">{item.risk}</Typography>
+                      <Typography variant="caption">{item.day}</Typography>
+                    </Paper>
+                  </Grid>
+                 );
+              })}
+            </Grid>
+          </Box>
+
+          {/* Recommendations */}
+          <Box mt={3}>
+            <Typography variant="subtitle1" fontWeight="bold">Genie's Advice</Typography>
+            <ul>
+              {predictions.recommendations.map((rec, i) => (
+                <li key={i}><Typography variant="body2">{rec}</Typography></li>
+              ))}
+            </ul>
+          </Box>
+        </>
+      )}
     </Box>
   );
 };
