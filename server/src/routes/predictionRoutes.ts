@@ -5,6 +5,14 @@ import Prediction from '../models/Prediction'; // <--- Import the new model
 
 const router = express.Router();
 
+type OpenRouterChatResponse = {
+  choices: {
+    message: {
+      content: string;
+    };
+  }[];
+};
+
 // GET /api/predictions/generate?userId=123
 router.get('/generate', async (req: Request, res: Response): Promise<void> => {
   const { userId } = req.query;
@@ -82,10 +90,10 @@ router.get('/generate', async (req: Request, res: Response): Promise<void> => {
     `;
 
     // 6. Call OpenRouter
-    const response = await axios.post(
+    const response = await axios.post<OpenRouterChatResponse>(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "openai/gpt-4o-mini", 
+        model: "openai/gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: JSON.stringify(contextData) },
@@ -96,10 +104,10 @@ router.get('/generate', async (req: Request, res: Response): Promise<void> => {
         headers: {
           "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost", 
-          "X-Title": "Migraine Genie",        
+          "HTTP-Referer": "http://localhost",
+          "X-Title": "Migraine Genie",
         },
-        timeout: 60000 // 60s timeout
+        timeout: 60000
       }
     );
 
