@@ -31,6 +31,9 @@ function isPredictionData(data: PredictionApiResponse): data is PredictionData {
   );
 }
 
+// Helper: format a Date as YYYY-MM-DD
+const formatYMD = (d: Date) => d.toISOString().slice(0, 10);
+
 const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId }) => {
   // State for data
   const [entryCount, setEntryCount] = useState<number | null>(null);
@@ -57,14 +60,14 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
         const count = countRes.data.count;
         setEntryCount(count);
 
-        console.log(`User has ${count} entries.`);
+        console.log(`[DailyPredictions] User ${userId} has ${count} total entries.`);
 
         // 2. If 10+, fetch the AI prediction
         if (count >= 10) {
           await generatePredictions();
         }
       } catch (e) {
-        console.error('Initialization error:', e);
+        console.error('[DailyPredictions] Initialization error:', e);
         setEntryCount(0);
         setErrorMsg('Failed to load your logs. Please try again later.');
       } finally {
@@ -82,17 +85,17 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
       setGeneratingAI(true);
       setErrorMsg(null);
 
-      console.log('📡 Calling AI Backend...');
+      console.log('[DailyPredictions] 📡 Calling AI Backend for predictions...');
       const res = await api.get<PredictionApiResponse>(
         `/api/predictions/generate?userId=${userId}`
       );
 
-      console.log('✅ AI Response:', res.data);
+      console.log('[DailyPredictions] ✅ Raw AI Response:', res.data);
       const body = res.data;
 
       // Handle "not enough data" from backend
       if ('notEnoughData' in body && body.notEnoughData) {
-        console.warn('Backend says: Not enough recent data to generate.');
+        console.warn('[DailyPredictions] Backend says: Not enough recent data to generate.');
         setPredictions(null);
         if (typeof body.currentCount === 'number') {
           setEntryCount(body.currentCount);
@@ -101,16 +104,20 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
         return;
       }
 
-      // From here, TS still thinks it's a union → use the type guard
+      // Narrow to PredictionData
       if (isPredictionData(body)) {
+        console.log(
+          '[DailyPredictions] 📊 Using prediction forecast (index 0=today):',
+          body.forecast
+        );
         setPredictions(body);
       } else {
-        console.error('Invalid data format received:', body);
+        console.error('[DailyPredictions] Invalid data format received:', body);
         setErrorMsg('Received incomplete data from Migraine Genie.');
         setPredictions(null);
       }
     } catch (error) {
-      console.error('❌ Error getting AI predictions:', error);
+      console.error('[DailyPredictions] ❌ Error getting AI predictions:', error);
       setErrorMsg('Failed to load predictions. Please try again later.');
       setPredictions(null);
     } finally {
@@ -159,6 +166,10 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
   }
 
   // --- RENDER 4: Main Content ---
+  // Precompute today's date once
+  const today = new Date();
+  const todayYMD = formatYMD(today);
+
   return (
     <Box display="flex" flexDirection="column" gap={2}>
       <Typography variant="h6" fontWeight="bold" color="primary">
@@ -211,28 +222,61 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
             </Typography>
             <Grid container spacing={1} justifyContent="center">
               {predictions.forecast.map((item, index) => {
+                // Treat index 0 as TODAY, 1 as tomorrow, etc.
+                const forecastDate = new Date(today);
+                forecastDate.setDate(today.getDate() + index);
+
+                const forecastYMD = formatYMD(forecastDate);
+                const dayLabel = forecastDate.toLocaleDateString(undefined, {
+                  weekday: 'short',
+                });
+                const dateLabel = forecastDate.toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                });
+
                 const riskVal = parseInt(item.risk) || 0;
                 const isHigh = riskVal > 50;
+                const isNext3 = index < 3; // today + next 2 days
+
+                console.log('[DailyPredictions] Rendering day', {
+                  index,
+                  risk: item.risk,
+                  date: forecastYMD,
+                  isNext3,
+                });
+
                 return (
                   <Grid item key={index}>
                     <Paper
                       sx={{
                         p: 1,
-                        width: 60,
-                        height: 60,
+                        width: 70,
+                        height: 70,
                         borderRadius: '50%',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: isHigh ? '2px solid #ff5252' : '1px solid #ddd',
-                        bgcolor: isHigh ? '#fff0f0' : '#fff',
+                        border: isNext3
+                          ? '2px solid #1976d2' // highlight next 3 days in blue
+                          : isHigh
+                          ? '2px solid #ff5252'
+                          : '1px solid #ddd',
+                        bgcolor: isNext3
+                          ? '#e3f2fd'
+                          : isHigh
+                          ? '#fff0f0'
+                          : '#fff',
                       }}
                     >
                       <Typography variant="body2" fontWeight="bold">
                         {item.risk}
                       </Typography>
-                      <Typography variant="caption">{item.day}</Typography>
+                      <Typography variant="caption">{dayLabel}</Typography>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
+                        {dateLabel}
+                      </Typography>
                     </Paper>
                   </Grid>
                 );
