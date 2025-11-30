@@ -20,11 +20,12 @@ type ChatMessage = {
   content: string;
 };
 
+// ✅ userId is now OPTIONAL
 interface AIAssistantProps {
-  userId: string | number | null;
+  userId?: string | number | null;
 }
 
-const AIAssistant: React.FC<AIAssistantProps> = ({ userId }) => {
+const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -35,7 +36,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId }) => {
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // inside useEffect initial messages
+  // Initial assistant message (migraine-only scope)
   useEffect(() => {
     setMessages([
       {
@@ -43,13 +44,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId }) => {
         content:
           "Hi, I'm Migraine Genie, your AI assistant focused specifically on migraines and headaches. " +
           "I can help you explore patterns, triggers, lifestyle habits, and questions to ask a real doctor. " +
-          "I can't talk about other medical conditions in detail, and I can't diagnose you, but I can help you make sense of your migraine symptoms. " +
+          "I can't talk about other medical conditions in detail, and I can't diagnose you, " +
+          "but I can help you make sense of your migraine symptoms. " +
           "Tell me about your migraines or what you're struggling with right now.",
       },
     ]);
   }, []);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll
   useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -62,7 +64,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId }) => {
 
     const newUserMessage: ChatMessage = { role: 'user', content: trimmed };
 
-    // Optimistic UI update
     const nextMessages = [...messages, newUserMessage];
     setMessages(nextMessages);
     setInput('');
@@ -73,6 +74,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId }) => {
       const res = await api.post<{ reply: string; modelUsed: string }>(
         '/api/assistant/doctor-chat',
         {
+          // userId can be null; backend treats it as "no personalized logs"
           userId: userId ?? undefined,
           messages: nextMessages,
         }
@@ -217,7 +219,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId }) => {
           multiline
           minRows={1}
           maxRows={4}
-          placeholder="Describe your migraine, triggers, or questions..."
+          placeholder="Describe your migraines, triggers, or questions..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -238,15 +240,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId }) => {
             whiteSpace: 'nowrap',
           }}
         >
-          {loading ? (
-            <CircularProgress size={20} color="inherit" />
-          ) : (
-            'Send'
-          )}
+          {loading ? <CircularProgress size={20} color="inherit" /> : 'Send'}
         </Button>
       </Box>
 
-      {/* Optional CTA under chat */}
       <Box textAlign="center" mt={3}>
         <Button
           variant="outlined"
