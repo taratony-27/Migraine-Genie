@@ -26,6 +26,10 @@ export type MigrainePredictionData = {
   recommendations: string[];
 };
 
+// ───────────────────────────────────────────
+// Helpers
+// ───────────────────────────────────────────
+
 function toNumber(val: unknown): number | null {
   if (val === null || val === undefined) return null;
   const parsed = parseFloat(String(val));
@@ -90,6 +94,7 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
 /**
  * Basic shape validation for the LLM JSON.
  * Throws if the structure is not usable.
+ * Used to decide whether to fall back to another model.
  */
 function validatePredictionData(raw: any): MigrainePredictionData {
   if (!raw || typeof raw !== 'object') {
@@ -114,9 +119,10 @@ function validatePredictionData(raw: any): MigrainePredictionData {
 
   // Ensure exactly 7 days
   const forecast: ForecastDay[] = raw.forecast.slice(0, 7).map((d: any, idx: number) => {
-    const riskNum = typeof d.risk === 'number'
-      ? d.risk
-      : parseInt(String(d.risk), 10);
+    const riskNum =
+      typeof d.risk === 'number'
+        ? d.risk
+        : parseInt(String(d.risk), 10);
 
     return {
       day: typeof d.day === 'string' ? d.day : `Day ${idx + 1}`,
@@ -143,63 +149,39 @@ function validatePredictionData(raw: any): MigrainePredictionData {
   return { triggers, forecast, recommendations };
 }
 
-// GET /api/predictions/generate
-router.get('/generate', async (req: Request, res: Response): Promise<void> => {
-  const { userId } = req.query;
+// ───────────────────────────────────────────
+// LLM CALL WITH FALLBACK
+// ───────────────────────────────────────────
 
-  if (!userId) {
-    res.status(400).json({ message: 'Missing userId' });
-    return;
-  }
+// Adjust these to exact OpenRouter slugs in your account.
+const MODEL_SEQUENCE: string[] = [
+  // Primary (paid)
+  'openai/gpt-4o-mini',
 
-  try {
-    // 1. Grab latest logs (by creation time so newest DB insert is first)
-    const recentLogs = await DailyInput.find({ user_id: userId })
-      .sort({ created_at: -1 })
-      .limit(20);
+  // Free Google Gemma
+  'google/gemma-3-27b-it',
+  'google/gemma-3-12b-it',
+  'google/gemma-3-4b-it',
 
-    if (recentLogs.length < 10) {
-      res.status(200).json({
-        notEnoughData: true,
-        currentCount: recentLogs.length,
-        message: 'Need at least 10 entries',
-      });
-      return;
-    }
+  // Free Gemini Flash
+  'google/gemini-2.0-flash-exp', // confirm slug in OpenRouter
 
-    // 2. Latest log entry
-    const newestLog: any = recentLogs[0];
+  // Meta Llama
+  'meta-llama/llama-3.3-70b-instruct',
+  'meta-llama/llama-3.2-3b-instruct',
 
-    // 3. Check for cached prediction for this latest log
-    const savedPrediction = await Prediction.findOne({ user_id: userId });
+  // Hermes 3
+  'nousresearch/hermes-3-llama-3.1-405b', // confirm slug
 
-    if (savedPrediction && savedPrediction.latest_log_id === newestLog.log_id) {
-      console.log(`💾 Cache Hit: Prediction based on Log #${newestLog.log_id} already exists.`);
-      res.json(savedPrediction.data);
-      return;
-    }
+  // Mistral
+  'mistralai/mistral-7b-instruct',
+];
 
-    console.log(`🆕 New Data Detected (Log #${newestLog.log_id}). Generating AI response...`);
-
-    // 4. Prepare logs in reverse-chronological order for LLM
-    const sortedByDate = [...recentLogs].sort(
-      (a: any, b: any) =>
-        new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
-    );
-
-    const contextData = sortedByDate.map((raw: any) => ({
-      date: raw.log_date,
-      triggers: raw.trigger,
-      sleep: raw.sleep,
-      screentime: raw.screentime,
-      symptoms: raw.symptoms,
-    }));
-
-    // 5. Aggregate features for the LLM
-    const features = buildFeaturesFromLogs(recentLogs);
-
-    // 6. Stronger system prompt
-    const SYSTEM_PROMPT = `
+/**
+ * Strong system prompt shared across all models.
+ * We rely on this + validation to keep outputs sane.
+ */
+const SYSTEM_PROMPT = `
 You are "Migraine Genie", an assistant that analyzes migraine-related logs.
 
 INPUT:
@@ -259,67 +241,174 @@ Return ONLY a single JSON object, no markdown, no explanation, matching exactly:
 }
 `.trim();
 
-    // 7. Call LLM via OpenRouter
-    const response = await axios.post<OpenRouterChatResponse>(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model: 'openai/gpt-4o-mini',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: `Stats: ${JSON.stringify(features)}\n\nLogs: ${JSON.stringify(
-              contextData
-            )}`,
-          },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.3,
-        max_tokens: 700,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost',
-          'X-Title': 'Migraine Genie',
-        },
-        timeout: 60000,
-      }
-    );
+/**
+ * Try multiple models in sequence until one returns valid JSON that passes validation.
+ * If all models fail, it throws.
+ */
+async function callMigraineModelWithFallback(
+  stats: any,
+  logs: any[],
+): Promise<{ data: MigrainePredictionData; modelUsed: string }> {
+  let lastError: unknown = null;
 
-    // 8. Process LLM response
-    const aiContent = response.data?.choices?.[0]?.message?.content || '{}';
-    console.log('AI RAW CONTENT:', aiContent);
-
-    // Safety: strip any accidental code fences
-    const cleanJson = aiContent
-      .replace(/```json/gi, '')
-      .replace(/```/g, '')
-      .trim();
-
-    let parsed: any;
+  for (const model of MODEL_SEQUENCE) {
     try {
-      parsed = JSON.parse(cleanJson);
-    } catch (e) {
-      console.error('❌ Failed to parse AI JSON:', e);
-      throw new Error('LLM returned invalid JSON.');
+      console.log(`🔮 Trying model: ${model}`);
+
+      const response = await axios.post<OpenRouterChatResponse>(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            {
+              role: 'user',
+              content: `Stats: ${JSON.stringify(stats)}\n\nLogs: ${JSON.stringify(
+                logs
+              )}`,
+            },
+          ],
+          // Some models may ignore this, but it's cheap help where supported
+          response_format: { type: 'json_object' },
+          temperature: 0.3,
+          max_tokens: 700,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost',
+            'X-Title': 'Migraine Genie',
+          },
+          timeout: 60000,
+        }
+      );
+
+      const aiContent = response.data?.choices?.[0]?.message?.content || '{}';
+      console.log(`AI RAW CONTENT (${model}):`, aiContent);
+
+      const cleanJson = aiContent
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(cleanJson);
+      } catch (parseErr) {
+        console.error(`❌ JSON parse failed for model ${model}:`, parseErr);
+        lastError = parseErr;
+        continue; // try next model
+      }
+
+      let validated: MigrainePredictionData;
+      try {
+        validated = validatePredictionData(parsed);
+      } catch (validationErr) {
+        console.error(
+          `❌ Validation failed for model ${model}:`,
+          (validationErr as Error).message
+        );
+        lastError = validationErr;
+        continue; // try next model
+      }
+
+      console.log(`✅ Model ${model} succeeded.`);
+      return { data: validated, modelUsed: model };
+    } catch (err: any) {
+      console.error(
+        `❌ Request failed for model ${model}:`,
+        err?.response?.data || err.message || err
+      );
+      lastError = err;
+      // continue to next model
+    }
+  }
+
+  throw new Error(
+    `All models failed. Last error: ${
+      (lastError as any)?.message || JSON.stringify(lastError)
+    }`
+  );
+}
+
+// ───────────────────────────────────────────
+// ROUTE
+// ───────────────────────────────────────────
+
+router.get('/generate', async (req: Request, res: Response): Promise<void> => {
+  const { userId } = req.query;
+
+  if (!userId) {
+    res.status(400).json({ message: 'Missing userId' });
+    return;
+  }
+
+  try {
+    // 1. Grab latest logs (by creation time so newest DB insert is first)
+    const recentLogs = await DailyInput.find({ user_id: userId })
+      .sort({ created_at: -1 })
+      .limit(20);
+
+    if (recentLogs.length < 10) {
+      res.status(200).json({
+        notEnoughData: true,
+        currentCount: recentLogs.length,
+        message: 'Need at least 10 entries',
+      });
+      return;
     }
 
-    const validated = validatePredictionData(parsed);
+    // 2. Latest log entry
+    const newestLog: any = recentLogs[0];
 
-    // 9. Save to DB
+    // 3. Check for cached prediction for this latest log
+    const savedPrediction = await Prediction.findOne({ user_id: userId });
+
+    if (savedPrediction && savedPrediction.latest_log_id === newestLog.log_id) {
+      console.log(`💾 Cache Hit: Prediction based on Log #${newestLog.log_id} already exists.`);
+      res.json(savedPrediction.data);
+      return;
+    }
+
+    console.log(`🆕 New Data Detected (Log #${newestLog.log_id}). Generating AI response...`);
+
+    // 4. Prepare logs in reverse-chronological order for LLM
+    const sortedByDate = [...recentLogs].sort(
+      (a: any, b: any) =>
+        new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
+    );
+
+    const contextData = sortedByDate.map((raw: any) => ({
+      date: raw.log_date,
+      triggers: raw.trigger,
+      sleep: raw.sleep,
+      screentime: raw.screentime,
+      symptoms: raw.symptoms,
+    }));
+
+    // 5. Aggregate features for the LLM
+    const features = buildFeaturesFromLogs(recentLogs);
+
+    // 6. Call LLM with fallback across multiple models
+    const { data: validated, modelUsed } = await callMigraineModelWithFallback(
+      features,
+      contextData
+    );
+
+    // 7. Save to DB
     await Prediction.findOneAndUpdate(
       { user_id: userId },
       {
         latest_log_id: newestLog.log_id,
         data: validated,
         updated_at: new Date(),
+        model_used: modelUsed,
       },
       { upsert: true, new: true }
     );
 
-    console.log('💾 Saved new prediction to DB.');
+    console.log(`💾 Saved new prediction to DB using model ${modelUsed}.`);
     res.json(validated);
   } catch (err) {
     console.error('Prediction Error:', err);
