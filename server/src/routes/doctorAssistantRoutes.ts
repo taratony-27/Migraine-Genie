@@ -156,32 +156,40 @@ async function callDoctorModelWithFallback(
 ): Promise<{ reply: string; modelUsed: string }> {
   let lastError: unknown = null;
 
-  // Only send last ~10 turns to keep context manageable
   const recentMessages = userMessages.slice(-10);
 
   for (const model of MODEL_SEQUENCE) {
     try {
       console.log(`🩺 Doctor assistant: trying model ${model}`);
 
-      const messages = [
+      const llmMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
         { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'system' as const,
-          content: `Migraine data summary for this user (may be null): Stats=${JSON.stringify(
+      ];
+
+      // 🔹 Inject Stats + Logs as a dedicated "user" message,
+      // just like prediction route does.
+      if (stats || logs) {
+        llmMessages.push({
+          role: 'user',
+          content: `Here is this user's migraine tracking data.\n\nStats: ${JSON.stringify(
             stats
-          )}, RecentLogs=${JSON.stringify(logs)}`,
-        },
+          )}\n\nLogs: ${JSON.stringify(logs)}`,
+        });
+      }
+
+      // Then append the actual chat history
+      llmMessages.push(
         ...recentMessages.map((m) => ({
           role: m.role,
           content: m.content,
-        })),
-      ];
+        }))
+      );
 
       const response = await axios.post<OpenRouterChatResponse>(
         'https://openrouter.ai/api/v1/chat/completions',
         {
           model,
-          messages,
+          messages: llmMessages,
           temperature: 0.5,
           max_tokens: 900,
         },
@@ -214,7 +222,7 @@ async function callDoctorModelWithFallback(
   }
 
   throw new Error(
-    `All doctor assistant models failed. Last error: ${
+    `All models failed. Last error: ${
       (lastError as any)?.message || JSON.stringify(lastError)
     }`
   );
@@ -243,7 +251,8 @@ router.post(
       let contextData: any[] | null = null;
 
       if (userId) {
-        // Pull last 20 migraine logs for this user to give the LLM context
+        // 🔹 MIRROR PREDICTION ROUTE: get latest logs, sorted by created_at,
+        // limit 20, and build features + contextData.
         const recentLogs = await DailyInput.find({ user_id: userId })
           .sort({ created_at: -1 })
           .limit(20);
@@ -251,18 +260,18 @@ router.post(
         if (recentLogs.length > 0) {
           stats = buildFeaturesFromLogs(recentLogs);
 
-          contextData = [...recentLogs]
-            .sort(
-              (a: any, b: any) =>
-                new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
-            )
-            .map((raw: any) => ({
-              date: raw.log_date,
-              triggers: raw.trigger,
-              sleep: raw.sleep,
-              screentime: raw.screentime,
-              symptoms: raw.symptoms,
-            }));
+          const sortedByDate = [...recentLogs].sort(
+            (a: any, b: any) =>
+              new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
+          );
+
+          contextData = sortedByDate.map((raw: any) => ({
+            date: raw.log_date,
+            triggers: raw.trigger,
+            sleep: raw.sleep,
+            screentime: raw.screentime,
+            symptoms: raw.symptoms,
+          }));
         }
       }
 
