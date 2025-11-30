@@ -11,6 +11,7 @@ import symptomRoutes from './routes/symptomRoutes';
 import medicationRoutes from './routes/medicationRoutes';
 import dailyInputRoutes from './routes/dailyInputRoutes';
 import predictionRoutes from './routes/predictionRoutes';
+import doctorAssistantRoutes from './routes/doctorAssistantRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -43,6 +44,7 @@ app.use('/api/symptoms', symptomRoutes);
 app.use('/api/medications', medicationRoutes);
 app.use('/api/daily-inputs', dailyInputRoutes);
 app.use('/api/predictions', predictionRoutes); 
+app.use('/api/assistant', doctorAssistantRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5001;
