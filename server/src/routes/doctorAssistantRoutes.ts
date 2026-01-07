@@ -154,24 +154,34 @@ async function callDoctorModelWithFallback(
   stats: any | null,
   logs: any[] | null,
 ): Promise<{ reply: string; modelUsed: string }> {
-  let lastError: unknown = null;
+  
+  // Create a text block for the logs
+  const logContextText = (logs && logs.length > 0) 
+    ? logs.map(l => `- Date: ${l.date}, Pain: ${l.symptoms}/10, Triggers: ${l.triggers}, Sleep: ${l.sleep}h`).join('\n')
+    : "No recent logs found for this user.";
 
-  // Only send last ~10 turns to keep context manageable
-  const recentMessages = userMessages.slice(-10);
+  const statsText = stats 
+    ? `Avg Sleep: ${stats.avgSleepHours}, Common Triggers: ${JSON.stringify(stats.commonTriggers)}`
+    : "No statistics available.";
 
   for (const model of MODEL_SEQUENCE) {
     try {
-      console.log(`🩺 Doctor assistant: trying model ${model}`);
-
       const messages = [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'system' as const,
-          content: `Migraine data summary for this user (may be null): Stats=${JSON.stringify(
-            stats
-          )}, RecentLogs=${JSON.stringify(logs)}`,
+        { 
+          role: 'system', 
+          // 💡 CRUCIAL: We merge the instructions AND the data into one single System Prompt
+          content: `${SYSTEM_PROMPT}
+          
+          USER DATA CONTEXT (Use this to answer questions):
+          ${statsText}
+
+          RECENT USER LOGS:
+          ${logContextText}
+          
+          INSTRUCTION: If the user asks about their history, refer to the data above. 
+          Do NOT tell the user you don't have access to their logs, because the data is provided right here.`
         },
-        ...recentMessages.map((m) => ({
+        ...userMessages.slice(-10).map((m) => ({
           role: m.role,
           content: m.content,
         })),
@@ -179,45 +189,25 @@ async function callDoctorModelWithFallback(
 
       const response = await axios.post<OpenRouterChatResponse>(
         'https://openrouter.ai/api/v1/chat/completions',
-        {
-          model,
-          messages,
-          temperature: 0.5,
-          max_tokens: 900,
-        },
+        { model, messages, temperature: 0.5, max_tokens: 900 },
         {
           headers: {
             Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost',
-            'X-Title': 'Migraine Genie Doctor Chat',
           },
           timeout: 60000,
         }
       );
 
       const reply = response.data?.choices?.[0]?.message?.content?.trim();
-      if (!reply) {
-        throw new Error('Empty reply from model');
-      }
-
-      console.log(`✅ Doctor assistant reply from ${model}`);
+      if (!reply) throw new Error('Empty reply');
       return { reply, modelUsed: model };
     } catch (err: any) {
-      console.error(
-        `❌ Doctor assistant model ${model} failed:`,
-        err?.response?.data || err.message || err
-      );
-      lastError = err;
+      console.error(`❌ Model ${model} failed`, err.message);
       continue;
     }
   }
-
-  throw new Error(
-    `All doctor assistant models failed. Last error: ${
-      (lastError as any)?.message || JSON.stringify(lastError)
-    }`
-  );
+  throw new Error("All models failed.");
 }
 
 // ───────────────────────────────────────────

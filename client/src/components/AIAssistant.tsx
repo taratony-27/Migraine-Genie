@@ -20,12 +20,11 @@ type ChatMessage = {
   content: string;
 };
 
-// ✅ userId is now OPTIONAL
 interface AIAssistantProps {
   userId?: string | number | null;
 }
 
-const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
+const AIAssistant: React.FC<AIAssistantProps> = ({ userId: propUserId = null }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -33,10 +32,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [dailyLogs, setDailyLogs] = useState([]);
+  
+  // Track the actual ID in state so handleSend can access it reliably
+  const [activeUserId, setActiveUserId] = useState<string | number | null>(propUserId);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Initial assistant message (migraine-only scope)
+  // 1. Initial assistant message
   useEffect(() => {
     setMessages([
       {
@@ -51,7 +54,44 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
     ]);
   }, []);
 
-  // Auto-scroll
+  // 2. Fetch User ID from LocalStorage and Fetch Daily Logs
+  useEffect(() => {
+    const initializeAssistant = async () => {
+      let currentId = activeUserId;
+
+      // If no ID passed via props, check localStorage
+      if (!currentId) {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser);
+            // Check all common ID variants
+            currentId = parsed?.user_id ?? parsed?.id ?? parsed?._id;
+            if (currentId) setActiveUserId(currentId);
+          } catch (err) {
+            console.error('Failed to parse user from local storage:', err);
+          }
+        }
+      }
+
+      // Fetch logs if we have an ID
+      if (currentId) {
+        try {
+          const response = await api.get('/api/daily-inputs', {
+            params: { userId: currentId },
+          });
+          console.log('[AIAssistant] Context logs loaded:', response.data.length);
+          setDailyLogs(response.data);
+        } catch (error) {
+          console.error('[AIAssistant] Failed to fetch daily logs:', error);
+        }
+      }
+    };
+
+    initializeAssistant();
+  }, []);
+
+  // 3. Auto-scroll
   useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -63,8 +103,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
     if (!trimmed || loading) return;
 
     const newUserMessage: ChatMessage = { role: 'user', content: trimmed };
-
     const nextMessages = [...messages, newUserMessage];
+
     setMessages(nextMessages);
     setInput('');
     setErrorMsg(null);
@@ -74,9 +114,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
       const res = await api.post<{ reply: string; modelUsed: string }>(
         '/api/assistant/doctor-chat',
         {
-          // userId can be null; backend treats it as "no personalized logs"
-          userId: userId ?? undefined,
+          userId: activeUserId ?? undefined,
           messages: nextMessages,
+          dailyLogs: dailyLogs, // Pass the logs we fetched earlier
         }
       );
 
@@ -123,29 +163,22 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
         </Typography>
       )}
 
-      <Typography
-        variant="subtitle1"
-        color="text.secondary"
-        mb={2}
-        textAlign="center"
-      >
-        Ask migraine and headache-related questions. I’ll help you explore patterns,
-        triggers, and lifestyle strategies around your migraines.
+      <Typography variant="subtitle1" color="text.secondary" mb={1} textAlign="center">
+        Ask migraine and headache-related questions.
       </Typography>
 
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        textAlign="center"
-        mb={2}
-      >
-        This assistant does not provide a medical diagnosis. Always consult a healthcare
-        professional for medical decisions.
+      {activeUserId && dailyLogs.length > 0 && (
+        <Typography variant="caption" sx={{ color: 'success.main', textAlign: 'center', mb: 1, display: 'block' }}>
+          ● Connected to your migraine history ({dailyLogs.length} logs found)
+        </Typography>
+      )}
+
+      <Typography variant="caption" color="text.secondary" textAlign="center" mb={2}>
+        This assistant does not provide a medical diagnosis. Always consult a professional.
       </Typography>
 
       <Divider sx={{ mb: 2 }} />
 
-      {/* Chat area */}
       <Paper
         variant="outlined"
         sx={{
@@ -159,6 +192,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
           display: 'flex',
           flexDirection: 'column',
           gap: 1.5,
+          bgcolor: '#fafafa'
         }}
       >
         {messages.map((msg, idx) => {
@@ -173,19 +207,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
             >
               <Box
                 sx={{
-                  maxWidth: '80%',
+                  maxWidth: '85%',
                   px: 2,
                   py: 1.2,
-                  borderRadius: 3,
-                  bgcolor: isUser
-                    ? theme.palette.primary.main
-                    : theme.palette.grey[100],
-                  color: isUser
-                    ? theme.palette.primary.contrastText
-                    : theme.palette.text.primary,
-                  boxShadow: isUser
-                    ? '0 2px 6px rgba(0,0,0,0.25)'
-                    : '0 1px 3px rgba(0,0,0,0.1)',
+                  borderRadius: isUser ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                  bgcolor: isUser ? theme.palette.primary.main : 'white',
+                  color: isUser ? 'white' : 'text.primary',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                  border: isUser ? 'none' : '1px solid #e0e0e0',
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                 }}
@@ -195,17 +224,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
             </Box>
           );
         })}
-
         <div ref={bottomRef} />
       </Paper>
 
       {errorMsg && (
-        <Typography variant="body2" color="error" mb={1}>
+        <Typography variant="body2" color="error" mb={1} textAlign="center">
           {errorMsg}
         </Typography>
       )}
 
-      {/* Input area */}
       <Box
         sx={{
           display: 'flex',
@@ -219,10 +246,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
           multiline
           minRows={1}
           maxRows={4}
-          placeholder="Describe your migraines, triggers, or questions..."
+          placeholder="e.g., 'What patterns do you see in my triggers?'"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 4 } }}
         />
 
         <Button
@@ -232,26 +260,19 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId = null }) => {
           onClick={handleSend}
           disabled={loading || !input.trim()}
           sx={{
-            borderRadius: 8,
+            borderRadius: 4,
             px: 3,
-            py: 1,
-            minWidth: isMobile ? '100%' : 140,
-            height: isMobile ? 'auto' : '100%',
-            whiteSpace: 'nowrap',
+            py: 1.5,
+            minWidth: isMobile ? '100%' : 120,
           }}
         >
-          {loading ? <CircularProgress size={20} color="inherit" /> : 'Send'}
+          {loading ? <CircularProgress size={24} color="inherit" /> : 'Send'}
         </Button>
       </Box>
 
       <Box textAlign="center" mt={3}>
-        <Button
-          variant="outlined"
-          size="small"
-          href="/goal-tracker"
-          sx={{ borderRadius: 8 }}
-        >
-          Open Goal Tracker
+        <Button variant="text" size="small" href="/goal-tracker">
+          View My Progress
         </Button>
       </Box>
     </Box>
