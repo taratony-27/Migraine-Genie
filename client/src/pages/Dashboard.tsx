@@ -124,7 +124,9 @@ const extractUserId = (): number | string | null => {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const id = pickId(payload) ?? payload?.sub ?? null;
       if (id !== null && id !== undefined) return id;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   return null;
@@ -170,13 +172,14 @@ const Dashboard: React.FC = () => {
     switch (activeTab) {
       case 'Daily Log':
         // PASS userId down
-        return userId ? <DailyLog userId={userId} />: <Typography>Please log in.</Typography>;
+        return userId ? <DailyLog userId={userId} /> : <Typography>Please log in.</Typography>;
       case 'Wellness Program':
         return <WellnessProgram />;
       case 'Medication':
         return <Medication />;
       case 'AI Assistant':
-        return <AIAssistant />;
+        // ⬇️ Only change: pass userId to the migraine chatbot
+        return <AIAssistant userId={userId} />;
       case 'Visualization Report':
         return <Visualization />;
       case 'Trigger Prediction':
@@ -203,11 +206,17 @@ const Dashboard: React.FC = () => {
       <Container maxWidth="md" sx={{ mb: 4, position: 'relative' }}>
         {isMobile ? (
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6" fontWeight="bold">{activeTab}</Typography>
-            <IconButton onClick={handleMenuClick}><MenuIcon /></IconButton>
+            <Typography variant="h6" fontWeight="bold">
+              {activeTab}
+            </Typography>
+            <IconButton onClick={handleMenuClick}>
+              <MenuIcon />
+            </IconButton>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
               {tabs.map((tab) => (
-                <MenuItem key={tab} onClick={() => handleMenuItemClick(tab)}>{tab}</MenuItem>
+                <MenuItem key={tab} onClick={() => handleMenuItemClick(tab)}>
+                  {tab}
+                </MenuItem>
               ))}
             </Menu>
           </Box>
@@ -217,7 +226,9 @@ const Dashboard: React.FC = () => {
               <motion.div
                 style={{
                   position: 'absolute',
-                  top: 0, left: 0, height: '100%',
+                  top: 0,
+                  left: 0,
+                  height: '100%',
                   width: `${tabWidth}%`,
                   backgroundColor: theme.palette.primary.main,
                   borderRadius: '50px',

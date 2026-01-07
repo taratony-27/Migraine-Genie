@@ -164,6 +164,7 @@ async function callDoctorModelWithFallback(
     ? `Avg Sleep: ${stats.avgSleepHours}, Common Triggers: ${JSON.stringify(stats.commonTriggers)}`
     : "No statistics available.";
 
+  let lastError: any | null = null; // Declare lastError to store the last error
   for (const model of MODEL_SEQUENCE) {
     try {
       const messages = [
@@ -194,16 +195,26 @@ async function callDoctorModelWithFallback(
           headers: {
             Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost',
+            'X-Title': 'Migraine Genie Doctor Chat',
           },
           timeout: 60000,
         }
       );
 
       const reply = response.data?.choices?.[0]?.message?.content?.trim();
-      if (!reply) throw new Error('Empty reply');
+      if (!reply) {
+        throw new Error('Empty reply from model');
+      }
+
+      console.log(`✅ Doctor assistant reply from ${model}`);
       return { reply, modelUsed: model };
     } catch (err: any) {
-      console.error(`❌ Model ${model} failed`, err.message);
+      console.error(
+        `❌ Doctor assistant model ${model} failed:`,
+        err?.response?.data || err.message || err
+      );
+      lastError = err;
       continue;
     }
   }
