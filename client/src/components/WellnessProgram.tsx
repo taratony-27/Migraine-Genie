@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -9,40 +9,28 @@ import {
   InputAdornment,
   MenuItem,
   Select,
-  Divider,
   Button,
   Link,
   useMediaQuery,
   useTheme,
+  CircularProgress,
+  Chip,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import SortIcon from "@mui/icons-material/Sort";
 
 // ───────────────────────────────────────────
-// Extended Wellness Articles
+// Types
 // ───────────────────────────────────────────
-const wellnessItems = [
-  { title: "6 Simple Stretches for Migraine Relief", desc: "Gentle movements to release neck tension and reduce migraine triggers." },
-  { title: "Tai Chi for Migraine Relief", desc: "How Tai Chi enhances balance, reduces stress, and regulates migraine episodes." },
-  { title: "High-Intensity Aerobic Exercise & Migraines", desc: "Why structured cardio routines help lower migraine frequency." },
-  { title: "Meditation for Migraine Relief", desc: "How deep breathing and awareness calm the nervous system." },
-  { title: "Yoga Nidra for Migraine Prevention", desc: "A guided sleep-like meditation to reduce stress and pain sensitivity." },
-  { title: "Hydration Strategies for Migraine Sufferers", desc: "Small habits that prevent dehydration-triggered migraines." },
-  { title: "Foods That Reduce Inflammation", desc: "Anti-inflammatory foods to ease chronic symptoms." },
-  { title: "Trigger Tracking: The Smart Way", desc: "How to identify and eliminate hidden migraine triggers." },
-  { title: "Blue Light & Digital Migraine", desc: "Reduce screen strain and protect visual comfort." },
-  { title: "Healthy Sleep Hygiene Checklist", desc: "Improve sleep quality with evidence-based methods." },
-  { title: "Progressive Muscle Relaxation (PMR)", desc: "Lower muscle tension and soothe your nervous system." },
-  { title: "Guided Nature Visualization", desc: "Mental imagery techniques to reduce pain intensity." },
-  { title: "Breathing Exercises for Calmness", desc: "4-7-8 and diaphragmatic breathing for immediate relief." },
-  { title: "Understanding Hormonal Migraine", desc: "Learn why hormones impact pain cycles and how to manage them." },
-  { title: "Warm Compress Therapy", desc: "When and how to use heat to release tension headaches." },
-  { title: "Cold Therapy for Migraines", desc: "Icing methods that reduce inflammation and throbbing pain." },
-  { title: "Walking Meditation", desc: "A quiet stroll to relax the mind and reset tension." },
-  { title: "Posture Correction for Migraine Relief", desc: "Reduce neck strain from poor desk ergonomics." },
-  { title: "Journaling for Stress Reduction", desc: "How writing helps clear cognitive overload." },
-  { title: "Aromatherapy for Migraine Relief", desc: "Lavender, peppermint, eucalyptus – science-backed choices." },
-];
+type ContentCard = {
+  type: "article" | "video";
+  title: string;
+  desc: string;
+  url: string;
+  imageUrl?: string;
+  source?: string;
+  publishedAt?: string;
+};
 
 // ───────────────────────────────────────────
 // Component
@@ -54,26 +42,79 @@ const WellnessProgram: React.FC = () => {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("az");
 
+  // Server-loaded content
+  const [items, setItems] = useState<ContentCard[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // ────────────────────────────────────────
-  // Filtering + Sorting
+  // Fetch from server (debounced by 300ms)
+  // ────────────────────────────────────────
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const params = new URLSearchParams({
+          type: "all",
+          q: search.trim(),
+          limit: "30",
+        });
+
+        const resp = await fetch(`/api/wellness/content?${params.toString()}`);
+        if (!resp.ok) {
+          throw new Error(`Request failed: ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        const nextItems: ContentCard[] = Array.isArray(data?.items) ? data.items : [];
+
+        if (alive) setItems(nextItems);
+      } catch (e: any) {
+        if (alive) {
+          setItems([]);
+          setError(e?.message || "Failed to load content");
+        }
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    const t = setTimeout(load, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [search]);
+
+  // ────────────────────────────────────────
+  // Filtering + Sorting (client-side)
   // ────────────────────────────────────────
   const processedItems = useMemo(() => {
-    let filtered = wellnessItems.filter((item) =>
-      item.title.toLowerCase().includes(search.toLowerCase()) ||
-      item.desc.toLowerCase().includes(search.toLowerCase())
-    );
+    let filtered = items.filter((item) => {
+      const s = search.toLowerCase();
+      return (
+        item.title.toLowerCase().includes(s) ||
+        item.desc.toLowerCase().includes(s) ||
+        (item.source ?? "").toLowerCase().includes(s)
+      );
+    });
 
     if (sortBy === "az") {
       filtered.sort((a, b) => a.title.localeCompare(b.title));
     } else if (sortBy === "za") {
       filtered.sort((a, b) => b.title.localeCompare(a.title));
     } else if (sortBy === "recent") {
-      // Assume list order = newest last → reverse for most recent
-      filtered = [...filtered].reverse();
+      filtered.sort((a, b) =>
+        String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? ""))
+      );
     }
 
     return filtered;
-  }, [search, sortBy]);
+  }, [items, search, sortBy]);
 
   return (
     <Box
@@ -131,24 +172,50 @@ const WellnessProgram: React.FC = () => {
           }}
         />
 
-        <Box sx={{ minWidth: 180 }}>
+        <Box sx={{ minWidth: 200 }}>
           <Select
             fullWidth
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={(e) => setSortBy(String(e.target.value))}
             startAdornment={<SortIcon sx={{ mr: 1 }} />}
           >
             <MenuItem value="az">Sort: A → Z</MenuItem>
             <MenuItem value="za">Sort: Z → A</MenuItem>
-            <MenuItem value="recent">Sort: Recently Added</MenuItem>
+            <MenuItem value="recent">Sort: Most Recent</MenuItem>
           </Select>
         </Box>
       </Box>
 
+      {/* Loading / Error */}
+      {loading && (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {!loading && error && (
+        <Box sx={{ textAlign: "center", py: 2 }}>
+          <Typography color="error" variant="body2" sx={{ mb: 1 }}>
+            {error}
+          </Typography>
+          <Typography color="text.secondary" variant="body2">
+            Make sure your backend route <b>/api/wellness/content</b> is running.
+          </Typography>
+        </Box>
+      )}
+
+      {!loading && !error && processedItems.length === 0 && (
+        <Box sx={{ textAlign: "center", py: 3 }}>
+          <Typography color="text.secondary">
+            No content found. Try a different keyword.
+          </Typography>
+        </Box>
+      )}
+
       {/* Wellness Grid */}
       <Grid container spacing={3}>
         {processedItems.map((item, index) => (
-          <Grid item xs={12} sm={6} md={4} key={index}>
+          <Grid item xs={12} sm={6} md={4} key={`${item.url}-${index}`}>
             <Card
               elevation={0}
               sx={{
@@ -157,13 +224,42 @@ const WellnessProgram: React.FC = () => {
                 border: "1px solid",
                 borderColor: "divider",
                 transition: "0.25s ease",
+                overflow: "hidden",
                 "&:hover": {
                   boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
                   transform: "translateY(-4px)",
                 },
               }}
             >
+              {/* Optional thumbnail */}
+              {item.imageUrl && (
+                <Box
+                  component="img"
+                  src={item.imageUrl}
+                  alt={item.title}
+                  sx={{
+                    width: "100%",
+                    height: 160,
+                    objectFit: "cover",
+                    display: "block",
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                  }}
+                />
+              )}
+
               <CardContent>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1 }}>
+                  <Chip
+                    size="small"
+                    label={item.type === "video" ? "Video" : "Article"}
+                    variant="outlined"
+                  />
+                  {item.source && (
+                    <Chip size="small" label={item.source} variant="outlined" />
+                  )}
+                </Box>
+
                 <Typography variant="h6" fontWeight="700" gutterBottom>
                   {item.title}
                 </Typography>
@@ -177,12 +273,14 @@ const WellnessProgram: React.FC = () => {
                 </Typography>
 
                 <Link
-                  component="button"
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   underline="hover"
                   color="primary"
                   sx={{ fontWeight: 600, fontSize: "0.85rem" }}
                 >
-                  Read More »
+                  {item.type === "video" ? "Watch" : "Read More"} »
                 </Link>
               </CardContent>
             </Card>
