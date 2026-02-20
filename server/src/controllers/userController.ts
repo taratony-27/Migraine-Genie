@@ -1,4 +1,5 @@
-import  { Request, Response } from "express";
+// src/controllers/userController.ts
+import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
@@ -18,7 +19,9 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
 
 // User Login
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
-  const { email, password } = req.body;
+  const body = req.body as { email?: string; password?: string };
+  const email = body.email;
+  const password = body.password;
 
   try {
     if (!email || !password) {
@@ -32,10 +35,18 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // ✅ block login if email not verified
+    // block login if email not verified
     if (!user.email_verified) {
       res.status(403).json({
         message: "Email not verified. Please verify your email before logging in.",
+      });
+      return;
+    }
+
+    // ✅ Fix: password_hash may be null/undefined for Google-only accounts
+    if (!user.password_hash) {
+      res.status(400).json({
+        message: "This account does not have a password set. Please log in with Google or reset your password.",
       });
       return;
     }
@@ -46,10 +57,9 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const jwtSecret = process.env.JWT_SECRET || "secretkey";
+    const jwtSecret: string = process.env.JWT_SECRET ?? "secretkey";
     const token = jwt.sign({ id: user._id }, jwtSecret, { expiresIn: "1d" });
 
-    // avoid leaking hash
     const safeUser = await User.findById(user._id).select("-password_hash -email_verify_token_hash");
     res.json({ token, user: safeUser });
   } catch (err: any) {
@@ -63,15 +73,27 @@ export const signupUser = async (req: Request, res: Response): Promise<void> => 
   try {
     console.log("📩 Signup request received:", req.body);
 
-    const { name, email, password, date_of_birth, gender } = req.body;
+    const body = req.body as {
+      name?: string;
+      email?: string;
+      password?: string;
+      date_of_birth?: string;
+      gender?: "male" | "female" | "other" | string;
+    };
+
+    const name = body.name;
+    const email = body.email;
+    const password = body.password;
+    const date_of_birth = body.date_of_birth;
+    const gender = body.gender;
 
     if (!name || !email || !password || !date_of_birth || !gender) {
       res.status(400).json({ message: "All fields are required" });
       return;
     }
 
-    const validGenders = ["male", "female", "other"];
-    if (!validGenders.includes(gender)) {
+    const validGenders = ["male", "female", "other"] as const;
+    if (!validGenders.includes(gender as any)) {
       res.status(400).json({ message: "Invalid gender value" });
       return;
     }
@@ -84,7 +106,7 @@ export const signupUser = async (req: Request, res: Response): Promise<void> => 
 
     const password_hash = await bcrypt.hash(password, 10);
 
-    // ✅ Create verification token (store hash, email raw token)
+    // Create verification token (store hash, email raw token)
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
@@ -104,15 +126,14 @@ export const signupUser = async (req: Request, res: Response): Promise<void> => 
     const savedUser = await newUser.save();
     console.log("✅ New user created:", savedUser._id);
 
-    // ✅ Send verification email
-    const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
+    // Send verification email
+    const appBaseUrl: string = process.env.APP_BASE_URL ?? "http://localhost:3000";
     const verifyUrl = `${appBaseUrl}/verify-email?token=${rawToken}`;
 
     try {
       await sendVerificationEmail({ to: email, name, verifyUrl });
     } catch (mailErr: any) {
       console.error("❌ Email send failed:", mailErr);
-      // You can decide whether to rollback the user creation; usually don't.
     }
 
     res.status(201).json({
@@ -130,10 +151,10 @@ export const signupUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// ✅ Verify email endpoint
+// Verify email endpoint
 export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
   try {
-    const token = String(req.query.token || "");
+    const token = typeof req.query.token === "string" ? req.query.token : "";
     if (!token) {
       res.status(400).json({ message: "Missing token" });
       return;
@@ -151,10 +172,14 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    user.email_verified = true;
-    user.email_verify_token_hash = null;
-    user.email_verify_token_expires_at = null;
-    await user.save();
+    // Avoid assigning null (schema typing is non-nullable). Use $unset instead.
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: { email_verified: true },
+        $unset: { email_verify_token_hash: "", email_verify_token_expires_at: "" },
+      }
+    );
 
     res.json({ message: "Email verified successfully. You can now log in." });
   } catch (err: any) {
@@ -163,10 +188,12 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// ✅ Resend verification email endpoint
+// Resend verification email endpoint
 export const resendVerificationEmail = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email } = req.body;
+    const body = req.body as { email?: string };
+    const email = body.email;
+
     if (!email) {
       res.status(400).json({ message: "Email is required" });
       return;
@@ -188,14 +215,24 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    user.email_verify_token_hash = tokenHash;
-    user.email_verify_token_expires_at = expires;
-    await user.save();
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          email_verify_token_hash: tokenHash,
+          email_verify_token_expires_at: expires,
+        },
+      }
+    );
 
-    const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
+    const appBaseUrl: string = process.env.APP_BASE_URL ?? "http://localhost:3000";
     const verifyUrl = `${appBaseUrl}/verify-email?token=${rawToken}`;
 
-    await sendVerificationEmail({ to: user.email, name: user.name, verifyUrl });
+    // ✅ Fix: ensure strings
+    const safeTo: string = typeof user.email === "string" ? user.email : email;
+    const safeName: string = typeof user.name === "string" && user.name.trim().length ? user.name : "User";
+
+    await sendVerificationEmail({ to: safeTo, name: safeName, verifyUrl });
 
     res.json({ message: "Verification email sent. Please check your inbox." });
   } catch (err: any) {
@@ -213,7 +250,8 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const { name, dateOfBirth, gender } = req.body;
+    const body = req.body as { name?: string; dateOfBirth?: string; gender?: string };
+    const { name, dateOfBirth, gender } = body;
 
     const validGenders = ["male", "female", "other"];
     if (gender && !validGenders.includes(gender)) {
