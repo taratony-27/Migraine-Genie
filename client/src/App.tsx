@@ -8,6 +8,7 @@ import WellnessProgram from './components/WellnessProgram';
 import AIAssistant from './components/AIAssistant';
 import Visualization from './components/Visualization';
 import Layout from './components/Layout';
+import VerifyEmail from "./pages/VerifyEmail";
 
 const App: React.FC = () => {
   return (
@@ -21,6 +22,7 @@ const App: React.FC = () => {
           <Route path="/wellness-program" element={<WellnessProgram />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
           <Route path="/visualization" element={<Visualization />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
         </Routes>
       </Layout>
     </Router>

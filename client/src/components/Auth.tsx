@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  Box, TextField, Typography, Button, Link, MenuItem, Snackbar, Alert, Paper
-} from '@mui/material';
-import api from '../services/api';
+  Box,
+  TextField,
+  Typography,
+  Button,
+  Link,
+  MenuItem,
+  Snackbar,
+  Alert,
+  Paper,
+} from "@mui/material";
+import api from "../services/api";
 
 interface AuthProps {
   onSwitchMode?: () => void;
@@ -11,28 +19,27 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    dateOfBirth: '',
-    gender: '',
+    name: "",
+    email: "",
+    password: "",
+    dateOfBirth: "",
+    gender: "",
   });
 
   const [alert, setAlert] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error';
+    severity: "success" | "error" | "info";
   }>({
     open: false,
-    message: '',
-    severity: 'success',
+    message: "",
+    severity: "success",
   });
 
-  // If a token already exists (e.g., returning user), attach it to the shared client once.
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     }
   }, []);
 
@@ -42,21 +49,20 @@ const Auth: React.FC<AuthProps> = () => {
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      const res = await api.post('/api/users/login', { email, password });
+      const res = await api.post("/api/users/login", { email, password });
       const { token, user } = res.data;
 
-      // Persist auth and set header on the shared client for subsequent calls
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-      setAlert({ open: true, message: 'Login successful!', severity: 'success' });
-      setTimeout(() => (window.location.href = '/dashboard'), 1000);
+      setAlert({ open: true, message: "Login successful!", severity: "success" });
+      setTimeout(() => (window.location.href = "/dashboard"), 1000);
     } catch (err: any) {
       setAlert({
         open: true,
-        message: err?.response?.data?.message || 'Login failed',
-        severity: 'error',
+        message: err?.response?.data?.message || "Login failed",
+        severity: "error",
       });
     }
   };
@@ -64,20 +70,26 @@ const Auth: React.FC<AuthProps> = () => {
   const handleSignup = async () => {
     const { name, email, password, dateOfBirth, gender } = formData;
     try {
-      await api.post('/api/users/signup', {
+      const res = await api.post("/api/users/signup", {
         name,
         email,
         password,
         date_of_birth: dateOfBirth,
         gender,
       });
-      setAlert({ open: true, message: 'Signup successful! Please log in.', severity: 'success' });
+
+      // ✅ tell user to check email; do not switch to login silently unless you want to
+      setAlert({
+        open: true,
+        message: res.data?.message || "Signup successful. Check your email to verify.",
+        severity: "info",
+      });
       setIsLogin(true);
     } catch (err: any) {
       setAlert({
         open: true,
-        message: err?.response?.data?.message || 'Signup failed',
-        severity: 'error',
+        message: err?.response?.data?.message || "Signup failed",
+        severity: "error",
       });
     }
   };
@@ -93,20 +105,20 @@ const Auth: React.FC<AuthProps> = () => {
         elevation={8}
         sx={{
           maxWidth: 360,
-          width: '100%',
+          width: "100%",
           minHeight: 400,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           p: 4,
           borderRadius: 3,
-          backgroundColor: '#fff',
-          border: '2px solid #1565c0',
+          backgroundColor: "#fff",
+          border: "2px solid #1565c0",
         }}
       >
         <Typography variant="h5" fontWeight="bold" gutterBottom color="#1565c0">
-          {isLogin ? 'Login' : 'Sign Up'}
+          {isLogin ? "Login" : "Sign Up"}
         </Typography>
 
         <Box width="90%" component="form" onSubmit={handleSubmit}>
@@ -130,7 +142,7 @@ const Auth: React.FC<AuthProps> = () => {
                 value={formData.dateOfBirth}
                 onChange={handleChange}
                 inputProps={{
-                  max: new Date().toISOString().split('T')[0], // Prevent future dates
+                  max: new Date().toISOString().split("T")[0],
                 }}
               />
               <TextField
@@ -148,6 +160,7 @@ const Auth: React.FC<AuthProps> = () => {
               </TextField>
             </>
           )}
+
           <TextField
             label="Email"
             name="email"
@@ -166,13 +179,15 @@ const Auth: React.FC<AuthProps> = () => {
             value={formData.password}
             onChange={handleChange}
           />
+
           <Button type="submit" fullWidth variant="contained" color="primary" sx={{ mt: 2 }}>
-            {isLogin ? 'Login' : 'Sign Up'}
+            {isLogin ? "Login" : "Sign Up"}
           </Button>
+
           <Typography variant="body2" mt={2} textAlign="center">
             {isLogin ? (
               <>
-                Don&apos;t have an account?{' '}
+                Don&apos;t have an account?{" "}
                 <Link
                   component="button"
                   onClick={(e) => {
@@ -185,7 +200,7 @@ const Auth: React.FC<AuthProps> = () => {
               </>
             ) : (
               <>
-                Already have an account?{' '}
+                Already have an account?{" "}
                 <Link
                   component="button"
                   onClick={(e) => {
@@ -198,19 +213,48 @@ const Auth: React.FC<AuthProps> = () => {
               </>
             )}
           </Typography>
+
+          {/* ✅ optional: resend verification */}
+          {isLogin && (
+            <Typography variant="body2" mt={1} textAlign="center">
+              Didn&apos;t get verification email?{" "}
+              <Link
+                component="button"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  try {
+                    if (!formData.email) {
+                      setAlert({ open: true, message: "Enter your email first.", severity: "error" });
+                      return;
+                    }
+                    const r = await api.post("/api/users/resend-verification", { email: formData.email });
+                    setAlert({ open: true, message: r.data?.message || "Sent.", severity: "info" });
+                  } catch (err: any) {
+                    setAlert({
+                      open: true,
+                      message: err?.response?.data?.message || "Failed to resend",
+                      severity: "error",
+                    });
+                  }
+                }}
+              >
+                Resend
+              </Link>
+            </Typography>
+          )}
         </Box>
       </Paper>
 
       <Snackbar
         open={alert.open}
-        autoHideDuration={3000}
+        autoHideDuration={3500}
         onClose={() => setAlert({ ...alert, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
           onClose={() => setAlert({ ...alert, open: false })}
           severity={alert.severity}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {alert.message}
         </Alert>
@@ -220,4 +264,3 @@ const Auth: React.FC<AuthProps> = () => {
 };
 
 export default Auth;
-
