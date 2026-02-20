@@ -1,7 +1,8 @@
-import express, { Request, Response } from 'express';
-import axios from 'axios';
-import DailyInput from '../models/DailyInput';
-import Prediction from '../models/Prediction';
+// server/src/routes/predictionRoutes.ts
+import express, { Request, Response } from "express";
+import axios from "axios";
+import DailyInput from "../models/DailyInput";
+import Prediction from "../models/Prediction";
 
 const router = express.Router();
 
@@ -12,18 +13,20 @@ type OpenRouterChatResponse = {
 type TriggerRisk = {
   icon: string;
   label: string;
-  risk: string; // "High Risk", "Medium Risk", "Low Risk"
+  risk: "High Risk" | "Medium Risk" | "Low Risk";
 };
 
 type ForecastDay = {
-  day: string;   // e.g. "Day 1", "Mon", "2025-11-30"
-  risk: number;  // 0–100 (no % sign)
+  day: string;
+  risk: number; // 0–100
 };
 
 export type MigrainePredictionData = {
   triggers: TriggerRisk[];
   forecast: ForecastDay[];
   recommendations: string[];
+  encouragement: string;
+  confidence: "Low" | "Medium" | "High";
 };
 
 // ───────────────────────────────────────────
@@ -34,6 +37,13 @@ function toNumber(val: unknown): number | null {
   if (val === null || val === undefined) return null;
   const parsed = parseFloat(String(val));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeTriggerLabel(input: unknown): string | null {
+  const s = String(input ?? "").trim();
+  if (!s) return null;
+  // basic cleanup
+  return s.replace(/\s+/g, " ");
 }
 
 function buildFeaturesFromLogs(recentLogs: any[]) {
@@ -68,11 +78,12 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
 
     const trg = entry.trigger;
     if (trg) {
-      // Handle both arrays and comma/semicolon-separated strings
-      const parts = Array.isArray(trg) ? trg : String(trg).split(/[;,]/);
+      const parts: unknown[] = Array.isArray(trg) ? trg : String(trg).split(/[;,]/);
       for (const p of parts) {
-        const key = String(p).trim().toLowerCase();
-        if (key) triggerCounts[key] = (triggerCounts[key] || 0) + 1;
+        const label = normalizeTriggerLabel(p);
+        if (!label) continue;
+        const key = label.toLowerCase();
+        triggerCounts[key] = (triggerCounts[key] || 0) + 1;
       }
     }
   }
@@ -91,138 +102,158 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
   };
 }
 
+function softenLanguage(text: string): string {
+  const replacements: Array<[RegExp, string]> = [
+    [/\bmust\b/gi, "can"],
+    [/\bcritical\b/gi, "important"],
+    [/\bdangerous\b/gi, "potentially concerning"],
+    [/\bsevere\b/gi, "strong"],
+    [/\bhigh risk\b/gi, "higher likelihood"],
+    [/\byou will\b/gi, "you may"],
+    [/\bguarantee\b/gi, "often helps"],
+    [/\bnever\b/gi, "rarely"],
+    [/\balways\b/gi, "often"],
+  ];
+
+  let out = text;
+  for (const [re, rep] of replacements) out = out.replace(re, rep);
+  return out.trim();
+}
+
+function normalizeRiskLabel(input: unknown): "High Risk" | "Medium Risk" | "Low Risk" {
+  const s = String(input ?? "").toLowerCase();
+  if (s.includes("high")) return "High Risk";
+  if (s.includes("low")) return "Low Risk";
+  return "Medium Risk";
+}
+
+function normalizeConfidence(input: unknown): "Low" | "Medium" | "High" {
+  const s = String(input ?? "").toLowerCase();
+  if (s.includes("high")) return "High";
+  if (s.includes("low")) return "Low";
+  return "Medium";
+}
+
 /**
- * Basic shape validation for the LLM JSON.
- * Throws if the structure is not usable.
- * Used to decide whether to fall back to another model.
+ * Validation + normalization
  */
-function validatePredictionData(raw: any): MigrainePredictionData {
-  if (!raw || typeof raw !== 'object') {
-    throw new Error('Prediction data is not an object.');
+function validatePredictionData(raw: unknown): MigrainePredictionData {
+  if (!raw || typeof raw !== "object") throw new Error("Prediction data is not an object.");
+
+  const obj = raw as Record<string, unknown>;
+
+  if (!Array.isArray(obj.triggers)) throw new Error("Prediction data missing triggers array.");
+  if (!Array.isArray(obj.forecast)) throw new Error("Prediction data missing forecast array.");
+  if (!Array.isArray(obj.recommendations)) throw new Error("Prediction data missing recommendations array.");
+
+  const triggers: TriggerRisk[] = (obj.triggers as unknown[])
+    .slice(0, 6)
+    .map((t: unknown): TriggerRisk => {
+      const tt = (t ?? {}) as Record<string, unknown>;
+      const label = typeof tt.label === "string" && tt.label.trim() ? tt.label.trim() : "Unknown trigger";
+      return {
+        icon: typeof tt.icon === "string" ? tt.icon : "",
+        label,
+        risk: normalizeRiskLabel(tt.risk),
+      };
+    });
+
+  const forecast: ForecastDay[] = (obj.forecast as unknown[])
+    .slice(0, 7)
+    .map((d: unknown, idx: number): ForecastDay => {
+      const dd = (d ?? {}) as Record<string, unknown>;
+      const riskRaw = dd.risk;
+      const riskNum =
+        typeof riskRaw === "number" ? riskRaw : parseInt(String(riskRaw ?? ""), 10);
+
+      return {
+        day: typeof dd.day === "string" && dd.day.trim() ? dd.day.trim() : `Day ${idx + 1}`,
+        risk: Number.isFinite(riskNum) ? Math.min(Math.max(riskNum, 0), 100) : 0,
+      };
+    });
+
+  while (forecast.length < 7) {
+    forecast.push({
+      day: `Day ${forecast.length + 1}`,
+      risk: forecast[forecast.length - 1]?.risk ?? 35,
+    });
   }
 
-  if (!Array.isArray(raw.triggers)) {
-    throw new Error('Prediction data missing triggers array.');
-  }
-  if (!Array.isArray(raw.forecast)) {
-    throw new Error('Prediction data missing forecast array.');
-  }
-  if (!Array.isArray(raw.recommendations)) {
-    throw new Error('Prediction data missing recommendations array.');
-  }
-
-  const triggers: TriggerRisk[] = raw.triggers.map((t: any) => ({
-    icon: typeof t.icon === 'string' ? t.icon : '',
-    label: typeof t.label === 'string' ? t.label : 'Unknown trigger',
-    risk: typeof t.risk === 'string' ? t.risk : 'Medium Risk',
-  }));
-
-  // Ensure exactly 7 days
-  const forecast: ForecastDay[] = raw.forecast.slice(0, 7).map((d: any, idx: number) => {
-    const riskNum =
-      typeof d.risk === 'number'
-        ? d.risk
-        : parseInt(String(d.risk), 10);
-
-    return {
-      day: typeof d.day === 'string' ? d.day : `Day ${idx + 1}`,
-      risk: Number.isFinite(riskNum) ? Math.min(Math.max(riskNum, 0), 100) : 0,
-    };
-  });
-
-  if (forecast.length < 7) {
-    // Pad if the model under-returns
-    const padCount = 7 - forecast.length;
-    for (let i = 0; i < padCount; i++) {
-      forecast.push({
-        day: `Day ${forecast.length + 1}`,
-        risk: forecast[forecast.length - 1]?.risk ?? 50,
-      });
-    }
-  }
-
-  const recommendations: string[] = raw.recommendations
-    .filter((r: any) => typeof r === 'string')
+  const recommendations: string[] = (obj.recommendations as unknown[])
+    .filter((r: unknown): r is string => typeof r === "string")
+    .map((r: string) => softenLanguage(r))
     .map((r: string) => r.trim())
-    .filter(Boolean);
+    .filter((r: string) => r.length > 0)
+    .slice(0, 6);
 
-  return { triggers, forecast, recommendations };
+  while (recommendations.length < 3) {
+    recommendations.push(
+      "Try one small, consistent adjustment this week (sleep timing, screen breaks) and note what helps most."
+    );
+  }
+
+  const encouragement =
+    typeof obj.encouragement === "string" && obj.encouragement.trim()
+      ? softenLanguage(obj.encouragement).trim()
+      : "You’re building useful patterns—small changes over a week can add up to meaningful relief.";
+
+  const confidence = normalizeConfidence(obj.confidence);
+
+  return { triggers, forecast, recommendations, encouragement, confidence };
 }
 
 // ───────────────────────────────────────────
 // LLM CALL WITH FALLBACK
 // ───────────────────────────────────────────
 
-// Adjust these to exact OpenRouter slugs in your account.
 const MODEL_SEQUENCE: string[] = [
-  // Primary (paid)
-  'openai/gpt-4o-mini',
-
-  // Free Google Gemma
-  'google/gemma-3-27b-it',
-  'google/gemma-3-12b-it',
-  'google/gemma-3-4b-it',
-
-  // Free Gemini Flash
-  'google/gemini-2.0-flash-exp', // confirm slug in OpenRouter
-
-  // Meta Llama
-  'meta-llama/llama-3.3-70b-instruct',
-  'meta-llama/llama-3.2-3b-instruct',
-
-  // Hermes 3
-  'nousresearch/hermes-3-llama-3.1-405b', // confirm slug
-
-  // Mistral
-  'mistralai/mistral-7b-instruct',
+  "openai/gpt-4o-mini",
+  "google/gemma-3-27b-it",
+  "google/gemma-3-12b-it",
+  "google/gemma-3-4b-it",
+  "google/gemini-2.0-flash-exp",
+  "meta-llama/llama-3.3-70b-instruct",
+  "meta-llama/llama-3.2-3b-instruct",
+  "nousresearch/hermes-3-llama-3.1-405b",
+  "mistralai/mistral-7b-instruct",
 ];
 
-/**
- * Strong system prompt shared across all models.
- * We rely on this + validation to keep outputs sane.
- */
 const SYSTEM_PROMPT = `
-You are "Migraine Genie", an assistant that analyzes migraine-related logs.
+You are "Migraine Genie", a supportive migraine-pattern assistant.
+
+STYLE (IMPORTANT):
+- Be calm, optimistic, and practical.
+- Avoid fear, alarm, shame, or absolute language ("must", "guarantee", "you will").
+- Do not diagnose. Do not claim certainty. Use "may", "often", "might".
+- Focus on small wins and actionable steps.
+- If there is risk, describe it gently and offer next steps without panic.
 
 INPUT:
-- "Stats": aggregated values (avgSleepHours, avgScreenTimeHours, avgSymptomScore, totalLogs, commonTriggers[]).
-- "Logs": recent daily entries [{ date, triggers, sleep, screentime, symptoms }], with the most recent entries first.
+- Stats: aggregated values + commonTriggers.
+- Logs: recent daily entries.
 
-YOUR JOB (READ CAREFULLY):
+TASKS:
+1) Triggers (lenient + realistic)
+- Choose up to 4–6 triggers that are most supported by the logs.
+- Risk labels must be: "High Risk" | "Medium Risk" | "Low Risk"
+- Use "High Risk" only when pattern is strong (frequent trigger + symptom spikes).
 
-1. Patterns
-   - Identify the clearest patterns that connect:
-     * low sleep or irregular sleep with symptoms,
-     * high screentime with symptoms,
-     * specific triggers with symptom spikes.
-   - Reference concrete behaviors when you give recommendations.
+2) Forecast (exactly 7 days)
+- Return 7 items, risk as INTEGER 0..100.
+- Avoid rigid patterns. Keep variation realistic.
+- Keep forecast slightly conservative (do NOT overestimate).
+- If logs are improving, keep upcoming risk lower.
 
-2. 7-Day Forecast
-   - Produce exactly 7 days of forecast.
-   - Each day must have:
-       { "day": "string", "risk": number }
-     where:
-       - "day" is any readable label ("Day 1", date string, or weekday).
-       - "risk" is an INTEGER between 0 and 100 (no percent sign, not a string).
-   - Do NOT use a perfectly monotonic pattern like 80, 70, 60, 50, 40, 30, 20.
-     The forecast must have realistic variation.
-   - Use the last ~14 days of logs to decide the overall level:
-       * If recent days are clearly worse than earlier days
-         (more symptoms, less sleep, more triggers),
-         set higher upcoming risk (e.g. 60–90).
-       * If recent days show improvement, lower the risk (e.g. 10–50).
-       * Day-to-day variation is allowed, but must stay in a plausible band.
+3) Recommendations (3–6 items)
+- Must be specific and tied to the user's actual patterns.
+- Keep tone positive and achievable (e.g. “Try…”, “Consider…”).
+- Prefer “doable next steps” over big lifestyle changes.
 
-3. Recommendations
-   - Give 3–6 concrete, specific recommendations.
-   - They must be clearly tied to this user's actual data:
-       * Only talk about screentime if screentime is often high.
-       * Only talk about sleep if sleep is often low or very irregular.
-       * Call out specific frequent triggers by name.
-   - No generic "drink water and exercise" unless it connects directly to patterns you see.
+4) Add:
+- "encouragement": one short positive line
+- "confidence": "Low" | "Medium" | "High" based on how consistent patterns are.
 
-RESPONSE FORMAT:
-Return ONLY a single JSON object, no markdown, no explanation, matching exactly:
+RETURN ONLY JSON (no markdown):
 
 {
   "triggers": [
@@ -237,98 +268,83 @@ Return ONLY a single JSON object, no markdown, no explanation, matching exactly:
     { "day": "string", "risk": 0 },
     { "day": "string", "risk": 0 }
   ],
-  "recommendations": ["string", "string", "..."]
+  "recommendations": ["string", "string", "string"],
+  "encouragement": "string",
+  "confidence": "Low | Medium | High"
 }
 `.trim();
 
-/**
- * Try multiple models in sequence until one returns valid JSON that passes validation.
- * If all models fail, it throws.
- */
+function safeJsonParse(input: string): unknown {
+  const clean = input.replace(/```json/gi, "").replace(/```/g, "").trim();
+  return JSON.parse(clean);
+}
+
 async function callMigraineModelWithFallback(
   stats: any,
-  logs: any[],
+  logs: any[]
 ): Promise<{ data: MigrainePredictionData; modelUsed: string }> {
   let lastError: unknown = null;
+
+  const apiKey = (process.env.OPENROUTER_API_KEY || "").trim();
+  if (!apiKey) throw new Error("Missing OPENROUTER_API_KEY");
 
   for (const model of MODEL_SEQUENCE) {
     try {
       console.log(`🔮 Trying model: ${model}`);
 
       const response = await axios.post<OpenRouterChatResponse>(
-        'https://openrouter.ai/api/v1/chat/completions',
+        "https://openrouter.ai/api/v1/chat/completions",
         {
           model,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            {
-              role: 'user',
-              content: `Stats: ${JSON.stringify(stats)}\n\nLogs: ${JSON.stringify(
-                logs
-              )}`,
-            },
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: `Stats: ${JSON.stringify(stats)}\n\nLogs: ${JSON.stringify(logs)}` },
           ],
-          // Some models may ignore this, but it's cheap help where supported
-          response_format: { type: 'json_object' },
-          temperature: 0.3,
-          max_tokens: 700,
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+          max_tokens: 900,
         },
         {
           headers: {
-            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost',
-            'X-Title': 'Migraine Genie',
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost",
+            "X-Title": process.env.OPENROUTER_APP_NAME || "Migraine Genie",
           },
           timeout: 60000,
         }
       );
 
-      const aiContent = response.data?.choices?.[0]?.message?.content || '{}';
-      console.log(`AI RAW CONTENT (${model}):`, aiContent);
+      const aiContent: string = response.data?.choices?.[0]?.message?.content || "{}";
 
-      const cleanJson = aiContent
-        .replace(/```json/gi, '')
-        .replace(/```/g, '')
-        .trim();
-
-      let parsed: any;
+      let parsed: unknown;
       try {
-        parsed = JSON.parse(cleanJson);
+        parsed = safeJsonParse(aiContent);
       } catch (parseErr) {
         console.error(`❌ JSON parse failed for model ${model}:`, parseErr);
         lastError = parseErr;
-        continue; // try next model
+        continue;
       }
 
       let validated: MigrainePredictionData;
       try {
         validated = validatePredictionData(parsed);
       } catch (validationErr) {
-        console.error(
-          `❌ Validation failed for model ${model}:`,
-          (validationErr as Error).message
-        );
+        console.error(`❌ Validation failed for model ${model}:`, (validationErr as Error).message);
         lastError = validationErr;
-        continue; // try next model
+        continue;
       }
 
       console.log(`✅ Model ${model} succeeded.`);
       return { data: validated, modelUsed: model };
     } catch (err: any) {
-      console.error(
-        `❌ Request failed for model ${model}:`,
-        err?.response?.data || err.message || err
-      );
+      console.error(`❌ Request failed for model ${model}:`, err?.response?.data || err.message || err);
       lastError = err;
-      // continue to next model
     }
   }
 
   throw new Error(
-    `All models failed. Last error: ${
-      (lastError as any)?.message || JSON.stringify(lastError)
-    }`
+    `All models failed. Last error: ${(lastError as any)?.message || JSON.stringify(lastError)}`
   );
 }
 
@@ -336,16 +352,15 @@ async function callMigraineModelWithFallback(
 // ROUTE
 // ───────────────────────────────────────────
 
-router.get('/generate', async (req: Request, res: Response): Promise<void> => {
-  const { userId } = req.query;
+router.get("/generate", async (req: Request, res: Response): Promise<void> => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId : "";
 
   if (!userId) {
-    res.status(400).json({ message: 'Missing userId' });
+    res.status(400).json({ message: "Missing userId" });
     return;
   }
 
   try {
-    // 1. Grab latest logs (by creation time so newest DB insert is first)
     const recentLogs = await DailyInput.find({ user_id: userId })
       .sort({ created_at: -1 })
       .limit(20);
@@ -354,16 +369,14 @@ router.get('/generate', async (req: Request, res: Response): Promise<void> => {
       res.status(200).json({
         notEnoughData: true,
         currentCount: recentLogs.length,
-        message: 'Need at least 10 entries',
+        message: "Need at least 10 entries",
       });
       return;
     }
 
-    // 2. Latest log entry
     const newestLog: any = recentLogs[0];
 
-    // 3. Check for cached prediction for this latest log
-    const savedPrediction = await Prediction.findOne({ user_id: userId });
+    const savedPrediction: any = await Prediction.findOne({ user_id: userId });
 
     if (savedPrediction && savedPrediction.latest_log_id === newestLog.log_id) {
       console.log(`💾 Cache Hit: Prediction based on Log #${newestLog.log_id} already exists.`);
@@ -373,10 +386,8 @@ router.get('/generate', async (req: Request, res: Response): Promise<void> => {
 
     console.log(`🆕 New Data Detected (Log #${newestLog.log_id}). Generating AI response...`);
 
-    // 4. Prepare logs in reverse-chronological order for LLM
     const sortedByDate = [...recentLogs].sort(
-      (a: any, b: any) =>
-        new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
+      (a: any, b: any) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
     );
 
     const contextData = sortedByDate.map((raw: any) => ({
@@ -387,16 +398,10 @@ router.get('/generate', async (req: Request, res: Response): Promise<void> => {
       symptoms: raw.symptoms,
     }));
 
-    // 5. Aggregate features for the LLM
     const features = buildFeaturesFromLogs(recentLogs);
 
-    // 6. Call LLM with fallback across multiple models
-    const { data: validated, modelUsed } = await callMigraineModelWithFallback(
-      features,
-      contextData
-    );
+    const { data: validated, modelUsed } = await callMigraineModelWithFallback(features, contextData);
 
-    // 7. Save to DB
     await Prediction.findOneAndUpdate(
       { user_id: userId },
       {
@@ -411,8 +416,8 @@ router.get('/generate', async (req: Request, res: Response): Promise<void> => {
     console.log(`💾 Saved new prediction to DB using model ${modelUsed}.`);
     res.json(validated);
   } catch (err) {
-    console.error('Prediction Error:', err);
-    res.status(500).json({ message: 'Failed to generate predictions' });
+    console.error("Prediction Error:", err);
+    res.status(500).json({ message: "Failed to generate predictions" });
   }
 });
 

@@ -35,18 +35,19 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // block login if email not verified
-    if (!user.email_verified) {
-      res.status(403).json({
-        message: "Email not verified. Please verify your email before logging in.",
-      });
-      return;
-    }
+    // TEMP: bypass email verification (DO NOT SHIP TO PROD)
+    // if (!user.email_verified) {
+    //   res.status(403).json({
+    //     message: "Email not verified. Please verify your email before logging in.",
+    //   });
+    //   return;
+    // }
 
-    // ✅ Fix: password_hash may be null/undefined for Google-only accounts
+    // password_hash may be null/undefined for Google-only accounts
     if (!user.password_hash) {
       res.status(400).json({
-        message: "This account does not have a password set. Please log in with Google or reset your password.",
+        message:
+          "This account does not have a password set. Please log in with Google or reset your password.",
       });
       return;
     }
@@ -60,7 +61,9 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     const jwtSecret: string = process.env.JWT_SECRET ?? "secretkey";
     const token = jwt.sign({ id: user._id }, jwtSecret, { expiresIn: "1d" });
 
-    const safeUser = await User.findById(user._id).select("-password_hash -email_verify_token_hash");
+    const safeUser = await User.findById(user._id).select(
+      "-password_hash -email_verify_token_hash"
+    );
     res.json({ token, user: safeUser });
   } catch (err: any) {
     console.error("Login error:", err);
@@ -118,7 +121,11 @@ export const signupUser = async (req: Request, res: Response): Promise<void> => 
       password_hash,
       date_of_birth: new Date(date_of_birth),
       gender,
-      email_verified: false,
+
+      // TEMP: bypass verification in dev (DO NOT SHIP TO PROD)
+      email_verified: true,
+
+      // keep token fields (harmless). You can also remove them in dev if you want.
       email_verify_token_hash: tokenHash,
       email_verify_token_expires_at: expires,
     });
@@ -126,18 +133,17 @@ export const signupUser = async (req: Request, res: Response): Promise<void> => 
     const savedUser = await newUser.save();
     console.log("✅ New user created:", savedUser._id);
 
-    // Send verification email
-    const appBaseUrl: string = process.env.APP_BASE_URL ?? "http://localhost:3000";
-    const verifyUrl = `${appBaseUrl}/verify-email?token=${rawToken}`;
-
-    try {
-      await sendVerificationEmail({ to: email, name, verifyUrl });
-    } catch (mailErr: any) {
-      console.error("❌ Email send failed:", mailErr);
-    }
+    // TEMP: optionally disable sending email in dev
+    // const appBaseUrl: string = process.env.APP_BASE_URL ?? "http://localhost:3000";
+    // const verifyUrl = `${appBaseUrl}/verify-email?token=${rawToken}`;
+    // try {
+    //   await sendVerificationEmail({ to: email, name, verifyUrl });
+    // } catch (mailErr: any) {
+    //   console.error("❌ Email send failed:", mailErr);
+    // }
 
     res.status(201).json({
-      message: "Signup successful. Please check your email to verify your account.",
+      message: "Signup successful. (Email verification bypassed in dev mode.)",
       user: {
         id: savedUser._id,
         name: savedUser.name,
@@ -201,7 +207,6 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
 
     const user = await User.findOne({ email });
     if (!user) {
-      // do not reveal user existence
       res.json({ message: "If that email exists, a verification email has been sent." });
       return;
     }
@@ -228,9 +233,9 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
     const appBaseUrl: string = process.env.APP_BASE_URL ?? "http://localhost:3000";
     const verifyUrl = `${appBaseUrl}/verify-email?token=${rawToken}`;
 
-    // ✅ Fix: ensure strings
     const safeTo: string = typeof user.email === "string" ? user.email : email;
-    const safeName: string = typeof user.name === "string" && user.name.trim().length ? user.name : "User";
+    const safeName: string =
+      typeof user.name === "string" && user.name.trim().length ? user.name : "User";
 
     await sendVerificationEmail({ to: safeTo, name: safeName, verifyUrl });
 
@@ -244,7 +249,7 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
 // Update user profile
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.id; // assuming JWT middleware adds user
+    const userId = (req as any).user?.id;
     if (!userId) {
       res.status(401).json({ message: "Unauthorized" });
       return;
