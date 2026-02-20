@@ -10,47 +10,77 @@ export type ContentCard = {
   publishedAt?: string;
 };
 
+type YouTubeSearchResponse = {
+  items?: {
+    id?: {
+      kind?: string;
+      videoId?: string;
+    };
+    snippet?: {
+      title?: string;
+      description?: string;
+      publishedAt?: string;
+      thumbnails?: {
+        default?: { url?: string };
+        medium?: { url?: string };
+        high?: { url?: string };
+      };
+    };
+  }[];
+};
+
 export async function searchYouTubeVideos(params: {
   q: string;
   maxResults?: number;
 }): Promise<ContentCard[]> {
   const apiKey = process.env.YOUTUBE_API_KEY;
-  
-  // LOG 1: Check if API key exists
+
   if (!apiKey) {
-    console.error("❌ YOUTUBE_API_KEY IS MISSING IN .ENV");
+    console.error("YOUTUBE_API_KEY is missing");
     return [];
   }
 
-  console.log(`🔍 Searching YouTube for: "${params.q}"`);
-
   try {
-    const response = await axios.get("https://www.googleapis.com/youtube/v3/search", {
-      params: {
-        part: "snippet",
-        type: "video",
-        q: params.q,
-        maxResults: params.maxResults || 10,
-        safeSearch: "strict",
-        key: apiKey,
-      },
-    });
+    const response = await axios.get<YouTubeSearchResponse>(
+      "https://www.googleapis.com/youtube/v3/search",
+      {
+        params: {
+          part: "snippet",
+          type: "video",
+          q: params.q,
+          maxResults: params.maxResults ?? 10,
+          safeSearch: "strict",
+          key: apiKey,
+        },
+      }
+    );
 
-    const items = response.data.items || [];
-    console.log(`✅ YouTube returned ${items.length} videos`);
+    const items = response.data?.items ?? [];
 
-    return items.map((it: any) => ({
-      type: "video",
-      title: it.snippet?.title || "No Title",
-      desc: it.snippet?.description || "",
-      url: `https://www.youtube.com/watch?v=${it.id?.videoId}`,
-      imageUrl: it.snippet?.thumbnails?.high?.url || it.snippet?.thumbnails?.medium?.url,
-      source: "YouTube",
-      publishedAt: it.snippet?.publishedAt,
-    })).filter((v: any) => v.url && !v.url.includes("undefined"));
+    return items
+      .filter(
+        (it) =>
+          typeof it?.id?.videoId === "string" &&
+          it.id.videoId.length > 0
+      )
+      .map((it) => ({
+        type: "video" as const,
+        title: it.snippet?.title ?? "No Title",
+        desc: it.snippet?.description ?? "",
+        url: `https://www.youtube.com/watch?v=${it.id!.videoId}`,
+        imageUrl:
+          it.snippet?.thumbnails?.high?.url ??
+          it.snippet?.thumbnails?.medium?.url ??
+          it.snippet?.thumbnails?.default?.url,
+        source: "YouTube",
+        publishedAt: it.snippet?.publishedAt,
+      }));
   } catch (error: any) {
-    // LOG 2: See exactly what Google says is wrong
-    console.error("❌ YouTube API Error Response:", error.response?.data || error.message);
+    console.error("YouTube API Error:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
     return [];
   }
 }
