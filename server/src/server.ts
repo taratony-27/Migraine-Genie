@@ -1,3 +1,4 @@
+// src/server.ts
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
@@ -12,11 +13,10 @@ import medicationRoutes from './routes/medicationRoutes';
 import dailyInputRoutes from './routes/dailyInputRoutes';
 import predictionRoutes from './routes/predictionRoutes';
 import doctorAssistantRoutes from './routes/doctorAssistantRoutes';
-import wellnessContentRoutes from "./routes/wellnessContentRoutes";
+import wellnessContentRoutes from "./routes/wellnessContentRoutes"; 
 
 // Load environment variables
 dotenv.config();
-console.log("🔑 OpenRouter Key Check:", process.env.OPENROUTER_API_KEY ? "✅ Loaded" : "❌ Missing");
 
 // Create Express app
 const app = express();
@@ -33,9 +33,9 @@ connectDB()
     process.exit(1);
   });
 
-// Base Route
+// Base Route (Health Check)
 app.get('/', (req: Request, res: Response) => {
-  res.send('Welcome to the AI Health Tracker API');
+  res.send('AI Health Tracker API is running');
 });
 
 // API Routes
@@ -47,8 +47,6 @@ app.use('/api/daily-inputs', dailyInputRoutes);
 app.use('/api/predictions', predictionRoutes); 
 app.use('/api/assistant', doctorAssistantRoutes);
 app.use("/api/wellness", wellnessContentRoutes);
-
 // Start server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
