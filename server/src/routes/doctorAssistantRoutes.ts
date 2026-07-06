@@ -33,9 +33,12 @@ const SEVERITY_LEGEND: Record<number, string> = {
   4: "very severe",
 };
 
+// [FIXED]: Fallback to original string if not a number (e.g. "moderate", "severe", "yes")
 function severityToLabel(sev: unknown): string {
   const n = toNumber(sev);
-  if (n === null) return "unknown";
+  if (n === null) {
+    return sev ? String(sev) : "unknown";
+  }
   if (SEVERITY_LEGEND[n] !== undefined) return `${n} (${SEVERITY_LEGEND[n]})`;
   return `${n}`;
 }
@@ -92,7 +95,7 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
   };
 }
 
-// Build symptom stats from Symptom documents
+// Build symptom stats from Symptom documents or directly parsed log objects
 function buildSymptomStats(symptomDocs: any[]) {
   const symptomCounts: Record<string, number> = {};
   const severitySum: Record<string, number> = {};
@@ -345,35 +348,40 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
     let contextData: any[] | null = null;
 
     if (userId) {
-      // 1) Pull last 20 daily logs
-      const recentLogs = await DailyInput.find({ user_id: userId })
-        .sort({ created_at: -1 })
+      // [FIXED]: Safely cast user_id to match your Number-based database schema 
+      let targetUserId: any = userId;
+      const parsedNum = Number(userId);
+      if (Number.isFinite(parsedNum)) {
+        targetUserId = parsedNum;
+      }
+
+      // [FIXED]: Sort by 'log_date' instead of 'created_at' to match your data schema
+      const recentLogs = await DailyInput.find({ user_id: targetUserId })
+        .sort({ log_date: -1 })
         .limit(20);
 
       if (recentLogs.length > 0) {
         stats = buildFeaturesFromLogs(recentLogs);
 
-        // Extract log_ids (needed to join to Symptom model)
+        // Extract log_ids for optional separate-collection symptoms
         const logIds = recentLogs
           .map((l: any) => l.log_id)
           .filter((x: any) => x !== null && x !== undefined);
 
-        // 2) Pull symptoms for those log_ids
-        let symptomDocs: any[] = [];
+        // Pull symptoms from the separate collection as a backup / alternative source
+        let collectionSymptomDocs: any[] = [];
         if (logIds.length > 0) {
-          symptomDocs = await Symptom.find({
-            user_id: userId,
+          collectionSymptomDocs = await Symptom.find({
+            user_id: targetUserId,
             log_id: { $in: logIds },
           })
             .sort({ created_at: -1 })
-            .limit(400); // guardrail
+            .limit(400);
         }
 
-        symptomStats = buildSymptomStats(symptomDocs);
-
-        // Group symptoms by log_id
+        // Group separate collection-based symptoms by log_id
         const symptomsByLogId = new Map<number, any[]>();
-        for (const s of symptomDocs) {
+        for (const s of collectionSymptomDocs) {
           const lid = toNumber((s as any).log_id);
           if (lid === null) continue;
           const arr = symptomsByLogId.get(lid) ?? [];
@@ -385,23 +393,54 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
           symptomsByLogId.set(lid, arr);
         }
 
+        // [FIXED]: We will harvest symptoms from BOTH the embedded object (DailyInput.symptoms) 
+        // AND the separate collection if available, so that stats are fully compiled either way.
+        const allCompiledSymptomDocs: any[] = [];
+
         // 3) Build context data: each daily log + symptoms list
         contextData = [...recentLogs]
           .sort((a: any, b: any) => {
-            const at = a?.log_date ? new Date(a.log_date).getTime() : new Date(a.created_at).getTime();
-            const bt = b?.log_date ? new Date(b.log_date).getTime() : new Date(b.created_at).getTime();
-            return bt - at;
+            const at = a?.log_date ? new Date(a.log_date).getTime() : 0;
+            const bt = b?.log_date ? new Date(b.log_date).getTime() : 0;
+            return bt - at; // Chronological order
           })
           .map((raw: any) => {
             const lidNum = toNumber(raw.log_id) ?? -1;
+            let symptomsList: any[] = [];
+
+            // Case A: Symptoms are directly inside the DailyInput as a nested object (Matches your UI)
+            if (raw.symptoms && typeof raw.symptoms === "object" && !Array.isArray(raw.symptoms)) {
+              symptomsList = Object.entries(raw.symptoms)
+                .filter(([_, v]) => v && String(v).toLowerCase() !== "no" && String(v).toLowerCase() !== "none")
+                .map(([name, value]) => {
+                  const payload = {
+                    symptom_name: name,
+                    severity: value,
+                    duration: null,
+                  };
+                  // Feed to stats compiler
+                  allCompiledSymptomDocs.push(payload);
+                  return payload;
+                });
+            } 
+            // Case B: Fallback to collection-based symptoms (using log_id join)
+            else if (lidNum !== -1) {
+              symptomsList = symptomsByLogId.get(lidNum) ?? [];
+              // Feed to stats compiler
+              allCompiledSymptomDocs.push(...symptomsList);
+            }
+
             return {
-              date: raw.log_date ?? raw.created_at ?? "unknown",
+              date: raw.log_date ?? "unknown",
               triggers: raw.trigger,
               sleep: raw.sleep,
               screentime: raw.screentime,
-              symptoms: lidNum !== -1 ? (symptomsByLogId.get(lidNum) ?? []) : [],
+              symptoms: symptomsList,
             };
           });
+
+        // Compute symptom statistics using the combined set
+        symptomStats = buildSymptomStats(allCompiledSymptomDocs);
       }
     }
 
