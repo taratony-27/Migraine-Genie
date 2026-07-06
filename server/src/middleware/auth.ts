@@ -1,28 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import admin from '../services/firebaseAdmin';
 
-const SECRET_KEY = process.env.JWT_SECRET || 'secretkey';
-
-interface JwtPayload {
-  id: string;
-  iat: number;
-  exp: number;
-}
-
-// Extend Request type to include user object
+// Extend Express Request to carry the verified Firebase user
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: { id: string };
+    user?: {
+      uid: string;       // Firebase UID — use this as the primary identifier
+      email?: string;
+      name?: string;
+    };
   }
 }
 
-export const authenticateToken = (
+export const authenticateToken = async (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader?.split(' ')[1]; // Format: Bearer <token>
+  const token = authHeader?.split(' ')[1]; // Bearer <token>
 
   if (!token) {
     res.status(401).json({ message: 'Access token missing' });
@@ -30,11 +26,15 @@ export const authenticateToken = (
   }
 
   try {
-    const decoded = jwt.verify(token, SECRET_KEY) as JwtPayload;
-    req.user = { id: decoded.id };
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.user = {
+      uid: decoded.uid,
+      email: decoded.email,
+      name: decoded.name,
+    };
     next();
   } catch (err) {
-    console.error('JWT verification failed:', err);
+    console.error('[Auth] Firebase token verification failed:', err);
     res.status(403).json({ message: 'Invalid or expired token' });
   }
 };

@@ -234,7 +234,7 @@ const WellnessProgram: React.FC = () => {
 
       {/* Cards grid */}
       {!loading && !error && processedItems.length > 0 && (
-        <Grid container spacing={2} sx={{ m: 0, width: "100%" }}>
+        <Grid container spacing={3}>
           {processedItems.map((item, index) => {
             const isVideo = item.type === "video";
             const host = safeHost(item.url);
@@ -243,7 +243,7 @@ const WellnessProgram: React.FC = () => {
             const desc = (item.desc || "").trim();
 
             return (
-              <Grid item xs={12} sm={6} lg={4} key={`${item.url}-${index}`} sx={{ pl: "0 !important" }}>
+              <Grid item xs={12} sm={6} lg={4} key={`${item.url}-${index}`}>
                 <Card
                   elevation={0}
                   sx={{

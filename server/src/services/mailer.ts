@@ -1,23 +1,21 @@
 import nodemailer from "nodemailer";
 
-const SMTP_HOST = process.env.SMTP_HOST!;
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_USER = process.env.SMTP_USER!;
 const SMTP_PASS = process.env.SMTP_PASS!;
-const MAIL_FROM = process.env.MAIL_FROM!; // e.g. "AI Health Tracker <no-reply@yourdomain.com>"
+const MAIL_FROM = process.env.MAIL_FROM!;
 
-if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !MAIL_FROM) {
-  // don't throw at import time in prod builds, but make it loud
-  console.warn("Mailer env vars missing. Check SMTP_HOST/SMTP_USER/SMTP_PASS/MAIL_FROM.");
+if (!SMTP_USER || !SMTP_PASS || !MAIL_FROM) {
+  console.warn("Mailer env vars missing. Check SMTP_USER/SMTP_PASS/MAIL_FROM in your .env");
 }
 
+// Brevo (Sendinblue) SMTP relay
 export const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_PORT === 465, // true for 465, false for 587/25
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
   auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
+    user: SMTP_USER, // your Brevo account email
+    pass: SMTP_PASS, // your Brevo SMTP key (not account password)
   },
 });
 

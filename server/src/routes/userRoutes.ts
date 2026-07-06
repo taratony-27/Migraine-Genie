@@ -1,27 +1,14 @@
 import express from "express";
-import {
-  getUsers,
-  loginUser,
-  signupUser,
-  updateUser,
-  verifyEmail,
-  resendVerificationEmail,
-} from "../controllers/userController";
-import { googleAuth } from "../controllers/authGoogleController";
+import { getUsers, syncUser, updateUser } from "../controllers/userController";
 import { authenticateToken } from "../middleware/auth";
 
 const router = express.Router();
 
+// Public
 router.get("/", getUsers);
-router.post("/login", loginUser);
-router.post("/signup", signupUser);
 
-router.get("/verify-email", verifyEmail);
-router.post("/resend-verification", resendVerificationEmail);
-
-// ✅ Google login/signup
-router.post("/auth/google", googleAuth);
-
-router.put("/update", authenticateToken, updateUser);
+// Protected — require a valid Firebase ID token
+router.post("/sync",   authenticateToken, syncUser);
+router.put("/update",  authenticateToken, updateUser);
 
 export default router;

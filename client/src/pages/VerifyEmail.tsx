@@ -65,7 +65,6 @@ const VerifyEmail: React.FC = () => {
         setState("success");
         setMessage(res.data?.message || "Email verified successfully.");
 
-        // redirect to login in 2 seconds
         setTimeout(() => navigate("/", { replace: true }), 2000);
       } catch (err: any) {
         setState("error");
@@ -79,9 +78,9 @@ const VerifyEmail: React.FC = () => {
 
   const resend = async () => {
     try {
-      if (!email || !email.includes("@")) {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
         setState("error");
-        setMessage("Enter a valid email to resend verification.");
+        setMessage("Enter a valid email address to resend verification.");
         return;
       }
 

@@ -1,25 +1,28 @@
 import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema({
-  user_id: { type: Number, required: true, unique: true },
+  // Firebase UID — primary auth identifier going forward
+  firebase_uid: { type: String, unique: true, sparse: true },
 
-  name: { type: String, required: true },
+  // Legacy numeric id kept so existing documents aren't broken
+  user_id: { type: Number, unique: true, sparse: true },
+
+  name:  { type: String, required: true },
   email: { type: String, required: true, unique: true },
 
-  // local auth
-  password_hash: { type: String, required: false, default: null },
+  // Profile
+  date_of_birth: { type: Date,   required: false },
+  gender:        { type: String, enum: ["male", "female", "other"], required: false },
 
-  date_of_birth: { type: Date, required: false },
-  gender: { type: String, enum: ["male", "female", "other"], required: false },
+  // Auth provider record
+  auth_provider: { type: String, enum: ["local", "google", "firebase"], default: "firebase" },
 
-  // ✅ email verification
-  email_verified: { type: Boolean, default: false },
-  email_verify_token_hash: { type: String, default: null },
+  // Legacy local-auth fields — kept nullable so old documents survive
+  password_hash:              { type: String, default: null },
+  email_verified:             { type: Boolean, default: true },
+  email_verify_token_hash:    { type: String,  default: null },
   email_verify_token_expires_at: { type: Date, default: null },
-
-  // ✅ google auth
-  auth_provider: { type: String, enum: ["local", "google"], default: "local" },
-  google_sub: { type: String, default: null }, // Google "sub" user id
+  google_sub:                 { type: String,  default: null },
 
   created_at: { type: Date, default: Date.now },
 });

@@ -1,262 +1,114 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box,
-  Typography,
-  TextField,
-  Stack,
-  Button,
-  Paper,
-  Snackbar,
-  Alert,
+  Box, Typography, TextField, Stack, Button, Paper,
+  Snackbar, Alert,
 } from '@mui/material';
+import HistoryIcon from '@mui/icons-material/History';
+import AddIcon from '@mui/icons-material/Add';
 import MedicationHistory from './MedicationHistory';
-import { useTheme, useMediaQuery } from '@mui/material';
 import api from '../services/api';
 
 const Medication: React.FC = () => {
   const [form, setForm] = useState({
-    medication_name: '',
-    dosage: '',
-    frequency: '',
-    start_date: '',
-    end_date: '',
-    notes: '',
+    medication_name: '', dosage: '', frequency: '',
+    start_date: '', end_date: '', notes: '',
   });
-
   const [showHistory, setShowHistory] = useState(false);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'warning' | 'info';
-  }>({
-    open: false,
-    message: '',
-    severity: 'success', // Can be 'success', 'error', 'warning', or 'info'
-  });
+    open: boolean; message: string; severity: 'success' | 'error' | 'warning' | 'info';
+  }>({ open: false, message: '', severity: 'success' });
 
-  // attach token if present
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   }, []);
 
   const resolveUserId = () => {
-    const user = localStorage.getItem('user');
-    if (!user) return 1;
     try {
-      const parsed = JSON.parse(user);
+      const parsed = JSON.parse(localStorage.getItem('user') || '{}');
       return parsed?.user_id ?? parsed?.id ?? parsed?._id ?? 1;
-    } catch {
-      return 1;
-    }
+    } catch { return 1; }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       const userId = resolveUserId();
-      const payload = {
-        ...form,
-        user_id: userId,
+      await api.post('/api/medications', {
+        ...form, user_id: userId,
         medication_id: Math.floor(Math.random() * 1000),
-        taken: true,
-        created_at: new Date().toISOString(),
-      };
+        taken: true, created_at: new Date().toISOString(),
+      }, { params: { userId } });
 
-      await api.post('/api/medications', payload, { params: { userId } });
-
-      // Show success notification
-      setSnackbar({
-        open: true,
-        message: 'Medication has been saved successfully!',
-        severity: 'success',
-      });
-
-      setForm({
-        medication_name: '',
-        dosage: '',
-        frequency: '',
-        start_date: '',
-        end_date: '',
-        notes: '',
-      });
-    } catch (error) {
-      console.error('Save failed:', error);
-
-      // Show error notification
-      setSnackbar({
-        open: true,
-        message: 'Failed to save medication.',
-        severity: 'error',
-      });
+      setSnackbar({ open: true, message: 'Medication saved successfully!', severity: 'success' });
+      setForm({ medication_name: '', dosage: '', frequency: '', start_date: '', end_date: '', notes: '' });
+    } catch {
+      setSnackbar({ open: true, message: 'Failed to save medication.', severity: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar((prev) => ({ ...prev, open: false }));
-  };
-
   return (
-    <Box display="flex" flexDirection="column" alignItems="center" p={2}>
-      {/* Header with Centered Title and Right-Aligned Button */}
-      <Box
-        width="100%"
-        maxWidth={560}
-        mb={2}
-        position="relative"
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-      >
-        <Box
-          sx={{
-            flex: 1,
-            display: 'flex',
-            justifyContent: { xs: 'flex-start', sm: 'center' },
-          }}
-        >
-          <Typography
-            variant="h5"
-            fontWeight="bold"
-            textAlign="center"
-            sx={{ fontSize: { xs: '1.2rem', sm: '1.8rem', md: '2rem' } }}
-          >
-            Medication
-          </Typography>
-        </Box>
-
+    <Box>
+      {/* Header row */}
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={1}>
+        <Typography variant="h5" fontWeight={800}>Medication</Typography>
         <Button
-          variant="outlined"
+          variant={showHistory ? 'contained' : 'outlined'}
           size="small"
-          sx={{
-            position: 'absolute',
-            right: 0,
-            width: { xs: '80px', sm: 'fit-content' },
-            fontSize: { xs: '0.5rem', sm: '1rem' },
-            padding: { xs: '3px 7px', sm: '6px 12px' },
-            whiteSpace: 'nowrap',
-          }}
-          onClick={() => setShowHistory((prev) => !prev)}
+          startIcon={showHistory ? <AddIcon /> : <HistoryIcon />}
+          onClick={() => setShowHistory((v) => !v)}
+          sx={{ borderRadius: 2, fontWeight: 600 }}
         >
-          {showHistory ? 'Hide History' : 'View History'}
+          {showHistory ? 'Add New' : 'View History'}
         </Button>
       </Box>
 
-      {/* Form */}
-      {!showHistory && (
+      {!showHistory ? (
         <Paper
-          elevation={3}
+          elevation={0}
           sx={{
-            width: '100%',
-            maxWidth: 500,
-            p: { xs: 2, md: 4 },
+            maxWidth: 520, mx: 'auto',
+            p: { xs: 3, md: 4 },
             borderRadius: 3,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 3,
-            bgcolor: '#fafafa',
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: '#fafbfc',
           }}
         >
-          <Stack spacing={2}>
-            <TextField
-              label="Medication Name"
-              name="medication_name"
-              value={form.medication_name}
-              onChange={handleChange}
-              fullWidth
-              variant="outlined"
-            />
-            <TextField
-              label="Dosage (e.g., 500mg)"
-              name="dosage"
-              value={form.dosage}
-              onChange={handleChange}
-              fullWidth
-              variant="outlined"
-            />
-            <TextField
-              label="Frequency (e.g., Twice a day)"
-              name="frequency"
-              value={form.frequency}
-              onChange={handleChange}
-              fullWidth
-              variant="outlined"
-            />
-            <TextField
-              label="Start Date"
-              name="start_date"
-              value={form.start_date}
-              onChange={handleChange}
-              type="date"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              variant="outlined"
-            />
-            <TextField
-              label="End Date"
-              name="end_date"
-              value={form.end_date}
-              onChange={handleChange}
-              type="date"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              variant="outlined"
-            />
-            <TextField
-              label="Notes (Optional)"
-              name="notes"
-              value={form.notes}
-              onChange={handleChange}
-              multiline
-              rows={3}
-              fullWidth
-              variant="outlined"
-            />
+          <Stack spacing={2.5}>
+            <TextField label="Medication Name" name="medication_name" value={form.medication_name} onChange={handleChange} fullWidth />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField label="Dosage (e.g. 500mg)" name="dosage" value={form.dosage} onChange={handleChange} fullWidth />
+              <TextField label="Frequency" name="frequency" value={form.frequency} onChange={handleChange} fullWidth />
+            </Stack>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField label="Start Date" name="start_date" value={form.start_date} onChange={handleChange} type="date" fullWidth InputLabelProps={{ shrink: true }} />
+              <TextField label="End Date" name="end_date" value={form.end_date} onChange={handleChange} type="date" fullWidth InputLabelProps={{ shrink: true }} />
+            </Stack>
+            <TextField label="Notes (optional)" name="notes" value={form.notes} onChange={handleChange} multiline rows={3} fullWidth />
+            <Button
+              variant="contained" size="large" fullWidth
+              onClick={handleSubmit} disabled={loading}
+              sx={{ borderRadius: 2, fontWeight: 700, py: 1.5 }}
+            >
+              {loading ? 'Saving…' : 'Save Medication'}
+            </Button>
           </Stack>
-
-          <Button
-            variant="contained"
-            size="large"
-            sx={{ mt: 3, borderRadius: 2, fontWeight: 'bold' }}
-            onClick={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? 'Saving...' : 'Save Medication'}
-          </Button>
         </Paper>
-      )}
-
-      {/* History */}
-      {showHistory && (
-        <Box width="100%" maxWidth={700} mt={2}>
+      ) : (
+        <Box mt={1}>
           <MedicationHistory />
         </Box>
       )}
 
-      {/* Snackbar for Notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <Alert onClose={() => setSnackbar((p) => ({ ...p, open: false }))} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

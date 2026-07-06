@@ -1,38 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Avatar, Button, Paper, Grid, Divider,
-  TextField, MenuItem, Snackbar, Alert
+  Box, Typography, Avatar, Button, Paper, Grid,
+  TextField, MenuItem, Snackbar, Alert, Container, Chip, Stack,
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import EditIcon from '@mui/icons-material/Edit';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import api from '../services/api';
 
-const Account: React.FC<{ }> = () => {
+const Account: React.FC = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<{
-    name: string;
-    email: string;
-    joined: string;
-    dateOfBirth?: string;
-    gender?: string;
-    totalEntries: number;
-    recentIntensity: string;
+    name: string; email: string; joined: string;
+    dateOfBirth?: string; gender?: string;
+    totalEntries: number; recentIntensity: string;
   } | null>(null);
 
   const [editMode, setEditMode] = useState(false);
   const [editedUser, setEditedUser] = useState<any>(null);
   const [alert, setAlert] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false,
-    message: '',
-    severity: 'success',
+    open: false, message: '', severity: 'success',
   });
 
-  // Attach token to shared client once
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
+    if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   }, []);
 
-  // Hydrate from localStorage (same behavior as before)
   useEffect(() => {
     const stored = localStorage.getItem('user');
     if (stored) {
@@ -41,7 +35,7 @@ const Account: React.FC<{ }> = () => {
         name: parsed.name,
         email: parsed.email,
         joined: parsed.joined || 'Unknown',
-        dateOfBirth: parsed.date_of_birth?.slice(0, 10) || '', // ISO -> YYYY-MM-DD
+        dateOfBirth: parsed.date_of_birth?.slice(0, 10) || '',
         gender: parsed.gender || '',
         totalEntries: parsed.totalEntries ?? 0,
         recentIntensity: parsed.recentIntensity ?? 'N/A',
@@ -51,36 +45,21 @@ const Account: React.FC<{ }> = () => {
     }
   }, []);
 
-  const handleEditChange = (field: string, value: string) => {
+  const handleEditChange = (field: string, value: string) =>
     setEditedUser({ ...editedUser, [field]: value });
-  };
 
   const handleSave = async () => {
     try {
-      // Map camelCase -> snake_case where expected by backend
-      const payload = {
-        name: editedUser.name,
-        date_of_birth: editedUser.dateOfBirth || null,
-        gender: editedUser.gender || null,
-      };
-
+      const payload = { name: editedUser.name, date_of_birth: editedUser.dateOfBirth || null, gender: editedUser.gender || null };
       const res = await api.put('/api/users/update', payload);
-
-      // Some backends return {user: {...}}; others return the fields directly.
       const returned = (res?.data?.user ?? res?.data) || {};
       const updated = {
         ...user,
-        // Prefer server values if present; fall back to what we just saved.
         name: returned.name ?? payload.name ?? user?.name,
-        email: user?.email ?? returned.email, // usually email doesn't change here
+        email: user?.email ?? returned.email,
         joined: user?.joined ?? 'Unknown',
-        dateOfBirth:
-          (returned.date_of_birth ? String(returned.date_of_birth).slice(0, 10) : undefined) ??
-          editedUser.dateOfBirth ??
-          user?.dateOfBirth ??
-          '',
+        dateOfBirth: (returned.date_of_birth ? String(returned.date_of_birth).slice(0, 10) : undefined) ?? editedUser.dateOfBirth ?? user?.dateOfBirth ?? '',
         gender: returned.gender ?? editedUser.gender ?? user?.gender ?? '',
-        // preserve stats if server didn't include them
         totalEntries: user?.totalEntries ?? 0,
         recentIntensity: user?.recentIntensity ?? 'N/A',
       } as typeof user;
@@ -89,156 +68,118 @@ const Account: React.FC<{ }> = () => {
       setEditedUser(updated);
       localStorage.setItem('user', JSON.stringify({
         ...JSON.parse(localStorage.getItem('user') || '{}'),
-        // keep original structure keys the rest of the app expects
-        name: updated?.name,
-        email: updated?.email,
-        joined: updated?.joined,
+        name: updated?.name, email: updated?.email, joined: updated?.joined,
         date_of_birth: updated?.dateOfBirth ? `${updated.dateOfBirth}T00:00:00` : null,
-        gender: updated?.gender,
-        totalEntries: updated?.totalEntries,
-        recentIntensity: updated?.recentIntensity,
+        gender: updated?.gender, totalEntries: updated?.totalEntries, recentIntensity: updated?.recentIntensity,
       }));
-
       setAlert({ open: true, message: 'Profile updated successfully', severity: 'success' });
       setEditMode(false);
     } catch (err: any) {
-      setAlert({
-        open: true,
-        message: err?.response?.data?.message || 'Update failed',
-        severity: 'error',
-      });
+      setAlert({ open: true, message: err?.response?.data?.message || 'Update failed', severity: 'error' });
     }
   };
 
   if (!user) {
     return (
-      <Box minHeight="100vh" display="flex" justifyContent="center" alignItems="center" bgcolor="#f4faff">
-        <Typography variant="h6" color="textSecondary">Loading user info...</Typography>
+      <Box minHeight="60vh" display="flex" justifyContent="center" alignItems="center">
+        <Typography color="text.secondary">Loading profile…</Typography>
       </Box>
     );
   }
 
+  const avatarSize = { xs: 72, sm: 88 };
+  const avatarFontSize = { xs: '1.8rem', sm: '2.2rem' };
+
   return (
-    <Box minHeight="100vh" display="flex" justifyContent="center" alignItems="center" bgcolor="#f4faff" px={2}>
-      <Paper elevation={6} sx={{ maxWidth: 700, width: '100%', padding: 4, borderRadius: 4, backgroundColor: '#ffffff' }}>
-        <Box display="flex" alignItems="center" flexDirection="column" textAlign="center" mb={4}>
-          <Avatar sx={{ width: 96, height: 96, bgcolor: '#1565c0', fontSize: 36 }}>
-            {user.name?.[0] || '?'}
-          </Avatar>
+    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100dvh', py: { xs: 3, md: 6 } }}>
+      <Container maxWidth="sm">
 
-          {editMode ? (
-            <>
-              <TextField
-                label="Name"
-                value={editedUser.name}
-                onChange={(e) => handleEditChange('name', e.target.value)}
-                margin="dense"
-                fullWidth
-              />
-              <TextField
-                label="Date of Birth"
-                type="date"
-                value={editedUser.dateOfBirth}
-                onChange={(e) => handleEditChange('dateOfBirth', e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                margin="dense"
-                fullWidth
-              />
-              <TextField
-                label="Gender"
-                select
-                value={editedUser.gender}
-                onChange={(e) => handleEditChange('gender', e.target.value)}
-                margin="dense"
-                fullWidth
-              >
-                <MenuItem value="male">Male</MenuItem>
-                <MenuItem value="female">Female</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
-              </TextField>
-            </>
-          ) : (
-            <>
-              <Typography variant="h4" fontWeight="bold" mt={2} color="#1565c0">
-                {user.name}
-              </Typography>
-              <Typography variant="body1" color="textSecondary">
-                {user.email}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Joined: {user.joined}
-              </Typography>
-            </>
-          )}
-        </Box>
+        {/* Profile card */}
+        <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden', mb: 3 }}>
 
-        <Divider sx={{ mb: 3, borderColor: '#90caf9' }} />
+          {/* Header strip */}
+          <Box sx={{ bgcolor: 'primary.main', height: 80 }} />
 
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
-            <Paper elevation={2} sx={{ padding: 2 }}>
-              <Typography variant="h6" color="#1565c0">
-                Total Entries
-              </Typography>
-              <Typography variant="h4" fontWeight="bold">
-                {user.totalEntries}
-              </Typography>
+          {/* Avatar + name */}
+          <Box sx={{ px: 3, pb: 3, mt: '-40px' }}>
+            <Avatar
+              sx={{
+                width: avatarSize, height: avatarSize,
+                bgcolor: '#fff', color: 'primary.main',
+                fontSize: avatarFontSize, fontWeight: 800,
+                border: '4px solid #fff', boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+              }}
+            >
+              {user.name?.[0]?.toUpperCase() || '?'}
+            </Avatar>
+
+            <Box mt={1.5}>
+              {editMode ? (
+                <Stack spacing={2} mt={2}>
+                  <TextField label="Full Name" value={editedUser.name} onChange={(e) => handleEditChange('name', e.target.value)} fullWidth size="small" />
+                  <TextField label="Date of Birth" type="date" value={editedUser.dateOfBirth} onChange={(e) => handleEditChange('dateOfBirth', e.target.value)} InputLabelProps={{ shrink: true }} fullWidth size="small" />
+                  <TextField label="Gender" select value={editedUser.gender} onChange={(e) => handleEditChange('gender', e.target.value)} fullWidth size="small">
+                    <MenuItem value="male">Male</MenuItem>
+                    <MenuItem value="female">Female</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </TextField>
+                </Stack>
+              ) : (
+                <>
+                  <Typography variant="h5" fontWeight={800} color="text.primary">{user.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">{user.email}</Typography>
+                  <Box display="flex" gap={1} mt={1} flexWrap="wrap">
+                    {user.gender && <Chip label={user.gender} size="small" variant="outlined" />}
+                    <Chip label={`Joined ${user.joined}`} size="small" variant="outlined" />
+                    {user.dateOfBirth && <Chip label={`DOB: ${user.dateOfBirth}`} size="small" variant="outlined" />}
+                  </Box>
+                </>
+              )}
+            </Box>
+          </Box>
+        </Paper>
+
+        {/* Stats */}
+        <Grid container spacing={2} mb={3}>
+          <Grid item xs={6}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+              <Typography variant="h4" fontWeight={800} color="primary.main">{user.totalEntries}</Typography>
+              <Typography variant="body2" color="text.secondary" mt={0.5}>Total Entries</Typography>
             </Paper>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <Paper elevation={2} sx={{ padding: 2 }}>
-              <Typography variant="h6" color="#1565c0">
-                Recent Migraine Intensity
-              </Typography>
-              <Typography variant="h4" fontWeight="bold">
-                {user.recentIntensity}
-              </Typography>
+          <Grid item xs={6}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+              <Typography variant="h4" fontWeight={800} color="primary.main">{user.recentIntensity}</Typography>
+              <Typography variant="body2" color="text.secondary" mt={0.5}>Recent Intensity</Typography>
             </Paper>
           </Grid>
         </Grid>
 
-        <Box mt={5} display="flex" justifyContent="center" gap={2}>
+        {/* Actions */}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           {editMode ? (
             <>
-              <Button variant="outlined" color="primary" onClick={() => setEditMode(false)}>
-                Cancel
-              </Button>
-              <Button variant="contained" color="primary" onClick={handleSave}>
-                Save Changes
-              </Button>
+              <Button variant="outlined" fullWidth onClick={() => setEditMode(false)}>Cancel</Button>
+              <Button variant="contained" fullWidth onClick={handleSave}>Save Changes</Button>
             </>
           ) : (
             <>
-              <Button variant="outlined" color="primary" onClick={() => setEditMode(true)}>
+              <Button variant="outlined" fullWidth startIcon={<EditIcon />} onClick={() => setEditMode(true)}>
                 Edit Profile
               </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                href="/dashboard"
-                sx={{ backgroundColor: '#1565c0', '&:hover': { backgroundColor: '#0d47a1' } }}
-              >
-                Go to Dashboard
+              <Button variant="contained" fullWidth startIcon={<DashboardIcon />} onClick={() => navigate('/dashboard')}>
+                Dashboard
               </Button>
             </>
           )}
-        </Box>
+        </Stack>
+      </Container>
 
-        <Snackbar
-          open={alert.open}
-          autoHideDuration={3000}
-          onClose={() => setAlert({ ...alert, open: false })}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert
-            onClose={() => setAlert({ ...alert, open: false })}
-            severity={alert.severity}
-            sx={{ width: '100%' }}
-          >
-            {alert.message}
-          </Alert>
-        </Snackbar>
-      </Paper>
+      <Snackbar open={alert.open} autoHideDuration={3000} onClose={() => setAlert({ ...alert, open: false })} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <Alert onClose={() => setAlert({ ...alert, open: false })} severity={alert.severity} sx={{ width: '100%' }}>
+          {alert.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

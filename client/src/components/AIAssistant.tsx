@@ -150,18 +150,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId: propUserId = null }) 
       flexDirection="column"
       width="100%"
       sx={{
-        height: isMobile ? 'auto' : '100%',
-        maxHeight: 'none',
-        px: isMobile ? 2 : 4,
-        py: isMobile ? 2 : 6,
+        height: '100%',
+        px: 0,
+        py: 0,
         boxSizing: 'border-box',
       }}
     >
-      {!isMobile && (
-        <Typography variant="h4" fontWeight="bold" textAlign="center" gutterBottom>
-          AI Migraine Assistant
-        </Typography>
-      )}
+      <Typography variant="h5" fontWeight={800} gutterBottom>
+        AI Migraine Assistant
+      </Typography>
 
       <Typography variant="subtitle1" color="text.secondary" mb={1} textAlign="center">
         Ask migraine and headache-related questions.
@@ -270,11 +267,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId: propUserId = null }) 
         </Button>
       </Box>
 
-      <Box textAlign="center" mt={3}>
-        <Button variant="text" size="small" href="/goal-tracker">
-          View My Progress
-        </Button>
-      </Box>
     </Box>
   );
 };

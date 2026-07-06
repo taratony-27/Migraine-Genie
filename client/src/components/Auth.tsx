@@ -1,102 +1,107 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
-  Box,
-  TextField,
-  Typography,
-  Button,
-  Link,
-  MenuItem,
-  Snackbar,
-  Alert,
-  Paper,
+  Box, TextField, Typography, Button, Link, MenuItem,
+  Snackbar, Alert, Paper, Divider, CircularProgress,
 } from "@mui/material";
+import GoogleIcon from "@mui/icons-material/Google";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  signInWithPopup,
+  updateProfile,
+} from "firebase/auth";
+import { auth, googleProvider } from "../services/firebase";
 import api from "../services/api";
 
-interface AuthProps {
-  onSwitchMode?: () => void;
-}
+const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
-const Auth: React.FC<AuthProps> = () => {
+const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    dateOfBirth: "",
-    gender: "",
+    name: "", email: "", password: "", dateOfBirth: "", gender: "",
   });
-
   const [alert, setAlert] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error" | "info";
-  }>({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+    open: boolean; message: string; severity: "success" | "error" | "info";
+  }>({ open: false, message: "", severity: "success" });
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    }
-  }, []);
+  const showAlert = (message: string, severity: "success" | "error" | "info") =>
+    setAlert({ open: true, message, severity });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  // After any successful Firebase sign-in, sync the user to MongoDB
+  // and store auth state in localStorage so the rest of the app works.
+  const afterSignIn = async (name?: string) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const token = await user.getIdToken();
+    localStorage.setItem("token", token);
+
+    // Sync to MongoDB — creates or finds the user document
+    const res = await api.post("/api/users/sync", { name: name || user.displayName || "" });
+    const mongoUser = res.data?.user;
+    if (mongoUser) {
+      localStorage.setItem("user", JSON.stringify(mongoUser));
+    }
+
+    window.location.href = "/dashboard";
   };
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleLogin = async () => {
+    if (!isValidEmail(formData.email)) {
+      showAlert("Please enter a valid email address.", "error");
+      return;
+    }
+    setLoading(true);
     try {
-      const res = await api.post("/api/users/login", { email, password });
-      const { token, user } = res.data;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      setAlert({ open: true, message: "Login successful!", severity: "success" });
-      setTimeout(() => (window.location.href = "/dashboard"), 1000);
+      await signInWithEmailAndPassword(auth, formData.email.trim(), formData.password);
+      await afterSignIn();
     } catch (err: any) {
-      setAlert({
-        open: true,
-        message: err?.response?.data?.message || "Login failed",
-        severity: "error",
-      });
+      showAlert(friendlyError(err.code), "error");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignup = async () => {
-    const { name, email, password, dateOfBirth, gender } = formData;
-    try {
-      const res = await api.post("/api/users/signup", {
-        name,
-        email,
-        password,
-        date_of_birth: dateOfBirth,
-        gender,
-      });
+    if (!formData.name.trim()) { showAlert("Name is required.", "error"); return; }
+    if (!isValidEmail(formData.email)) { showAlert("Please enter a valid email address.", "error"); return; }
+    if (formData.password.length < 6) { showAlert("Password must be at least 6 characters.", "error"); return; }
 
-      // ✅ tell user to check email; do not switch to login silently unless you want to
-      setAlert({
-        open: true,
-        message: res.data?.message || "Signup successful. Check your email to verify.",
-        severity: "info",
-      });
-      setIsLogin(true);
+    setLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, formData.email.trim(), formData.password);
+      await updateProfile(cred.user, { displayName: formData.name.trim() });
+      await sendEmailVerification(cred.user);
+      await afterSignIn(formData.name.trim());
     } catch (err: any) {
-      setAlert({
-        open: true,
-        message: err?.response?.data?.message || "Signup failed",
-        severity: "error",
-      });
+      showAlert(friendlyError(err.code), "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+      await afterSignIn();
+    } catch (err: any) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        showAlert(friendlyError(err.code), "error");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    isLogin ? handleLogin(formData.email, formData.password) : handleSignup();
+    isLogin ? handleLogin() : handleSignup();
   };
 
   return (
@@ -104,56 +109,27 @@ const Auth: React.FC<AuthProps> = () => {
       <Paper
         elevation={8}
         sx={{
-          maxWidth: 360,
-          width: "100%",
-          minHeight: 400,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          p: 4,
-          borderRadius: 3,
+          maxWidth: 380, width: "100%",
+          p: 4, borderRadius: 3,
           backgroundColor: "#fff",
           border: "2px solid #1565c0",
         }}
       >
-        <Typography variant="h5" fontWeight="bold" gutterBottom color="#1565c0">
-          {isLogin ? "Login" : "Sign Up"}
+        <Typography variant="h5" fontWeight="bold" gutterBottom color="#1565c0" textAlign="center">
+          {isLogin ? "Welcome back" : "Create account"}
         </Typography>
 
-        <Box width="90%" component="form" onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={handleSubmit} mt={1}>
           {!isLogin && (
             <>
-              <TextField
-                label="Full Name"
-                name="name"
-                fullWidth
-                margin="dense"
-                value={formData.name}
-                onChange={handleChange}
-              />
-              <TextField
-                label="Date of Birth"
-                name="dateOfBirth"
-                type="date"
-                fullWidth
-                margin="dense"
-                InputLabelProps={{ shrink: true }}
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                inputProps={{
-                  max: new Date().toISOString().split("T")[0],
-                }}
-              />
-              <TextField
-                label="Gender"
-                name="gender"
-                select
-                fullWidth
-                margin="dense"
-                value={formData.gender}
-                onChange={handleChange}
-              >
+              <TextField label="Full Name" name="name" fullWidth margin="dense"
+                value={formData.name} onChange={handleChange} />
+              <TextField label="Date of Birth" name="dateOfBirth" type="date"
+                fullWidth margin="dense" InputLabelProps={{ shrink: true }}
+                value={formData.dateOfBirth} onChange={handleChange}
+                inputProps={{ max: new Date().toISOString().split("T")[0] }} />
+              <TextField label="Gender" name="gender" select fullWidth margin="dense"
+                value={formData.gender} onChange={handleChange}>
                 <MenuItem value="male">Male</MenuItem>
                 <MenuItem value="female">Female</MenuItem>
                 <MenuItem value="other">Other</MenuItem>
@@ -161,106 +137,76 @@ const Auth: React.FC<AuthProps> = () => {
             </>
           )}
 
-          <TextField
-            label="Email"
-            name="email"
-            type="email"
-            fullWidth
-            margin="dense"
-            value={formData.email}
-            onChange={handleChange}
-          />
-          <TextField
-            label="Password"
-            name="password"
-            type="password"
-            fullWidth
-            margin="dense"
-            value={formData.password}
-            onChange={handleChange}
-          />
+          <TextField label="Email" name="email" type="email" fullWidth margin="dense"
+            value={formData.email} onChange={handleChange} />
+          <TextField label="Password" name="password" type="password" fullWidth margin="dense"
+            value={formData.password} onChange={handleChange}
+            helperText={!isLogin ? "At least 6 characters" : undefined} />
 
-          <Button type="submit" fullWidth variant="contained" color="primary" sx={{ mt: 2 }}>
-            {isLogin ? "Login" : "Sign Up"}
+          <Button
+            type="submit" fullWidth variant="contained" size="large"
+            disabled={loading}
+            sx={{ mt: 2, borderRadius: 2, fontWeight: 700, py: 1.2 }}
+          >
+            {loading
+              ? <CircularProgress size={22} color="inherit" />
+              : isLogin ? "Login" : "Create Account"}
           </Button>
-
-          <Typography variant="body2" mt={2} textAlign="center">
-            {isLogin ? (
-              <>
-                Don&apos;t have an account?{" "}
-                <Link
-                  component="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsLogin(false);
-                  }}
-                >
-                  Sign up
-                </Link>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
-                <Link
-                  component="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsLogin(true);
-                  }}
-                >
-                  Log in
-                </Link>
-              </>
-            )}
-          </Typography>
-
-          {/* ✅ optional: resend verification */}
-          {isLogin && (
-            <Typography variant="body2" mt={1} textAlign="center">
-              Didn&apos;t get verification email?{" "}
-              <Link
-                component="button"
-                onClick={async (e) => {
-                  e.preventDefault();
-                  try {
-                    if (!formData.email) {
-                      setAlert({ open: true, message: "Enter your email first.", severity: "error" });
-                      return;
-                    }
-                    const r = await api.post("/api/users/resend-verification", { email: formData.email });
-                    setAlert({ open: true, message: r.data?.message || "Sent.", severity: "info" });
-                  } catch (err: any) {
-                    setAlert({
-                      open: true,
-                      message: err?.response?.data?.message || "Failed to resend",
-                      severity: "error",
-                    });
-                  }
-                }}
-              >
-                Resend
-              </Link>
-            </Typography>
-          )}
         </Box>
+
+        <Divider sx={{ my: 2 }}>or</Divider>
+
+        <Button
+          fullWidth variant="outlined" size="large"
+          startIcon={<GoogleIcon />}
+          onClick={handleGoogle} disabled={loading}
+          sx={{ borderRadius: 2, fontWeight: 600, borderColor: "#ddd", color: "text.primary",
+            "&:hover": { borderColor: "#1565c0", bgcolor: "#f5f8ff" } }}
+        >
+          Continue with Google
+        </Button>
+
+        <Typography variant="body2" mt={2} textAlign="center">
+          {isLogin ? (
+            <>Don&apos;t have an account?{" "}
+              <Link component="button" onClick={(e) => { e.preventDefault(); setIsLogin(false); }}>
+                Sign up
+              </Link></>
+          ) : (
+            <>Already have an account?{" "}
+              <Link component="button" onClick={(e) => { e.preventDefault(); setIsLogin(true); }}>
+                Log in
+              </Link></>
+          )}
+        </Typography>
       </Paper>
 
-      <Snackbar
-        open={alert.open}
-        autoHideDuration={3500}
+      <Snackbar open={alert.open} autoHideDuration={4000}
         onClose={() => setAlert({ ...alert, open: false })}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setAlert({ ...alert, open: false })}
-          severity={alert.severity}
-          sx={{ width: "100%" }}
-        >
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}>
+        <Alert onClose={() => setAlert({ ...alert, open: false })}
+          severity={alert.severity} sx={{ width: "100%" }}>
           {alert.message}
         </Alert>
       </Snackbar>
     </>
   );
+};
+
+// Map Firebase error codes to user-friendly messages
+const friendlyError = (code: string): string => {
+  const map: Record<string, string> = {
+    "auth/user-not-found":         "No account found with that email.",
+    "auth/wrong-password":         "Incorrect password.",
+    "auth/invalid-credential":     "Invalid email or password.",
+    "auth/email-already-in-use":   "An account with that email already exists.",
+    "auth/weak-password":          "Password must be at least 6 characters.",
+    "auth/invalid-email":          "Please enter a valid email address.",
+    "auth/too-many-requests":      "Too many attempts. Please try again later.",
+    "auth/network-request-failed": "Network error. Check your connection.",
+    "auth/popup-blocked":          "Popup was blocked. Please allow popups for this site.",
+  };
+  return map[code] || "Something went wrong. Please try again.";
 };
 
 export default Auth;
