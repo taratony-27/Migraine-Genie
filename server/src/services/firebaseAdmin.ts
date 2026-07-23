@@ -1,8 +1,10 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
 import path from 'path';
 import fs from 'fs';
 
-if (!admin.apps.length) {
+let app: App;
+
+if (!getApps().length) {
   // Option A (recommended for local dev): point FIREBASE_SERVICE_ACCOUNT_PATH
   // to the JSON file you downloaded from Firebase Console →
   // Project Settings → Service accounts → Generate new private key
@@ -16,10 +18,10 @@ if (!admin.apps.length) {
       ? keyPath
       : path.resolve(process.cwd(), keyPath);
     const serviceAccount = JSON.parse(fs.readFileSync(resolved, 'utf8'));
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    app = initializeApp({ credential: cert(serviceAccount) });
   } else if (keyJson) {
     const serviceAccount = JSON.parse(keyJson);
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    app = initializeApp({ credential: cert(serviceAccount) });
   } else {
     console.warn(
       '[Firebase Admin] No service account configured. ' +
@@ -27,8 +29,10 @@ if (!admin.apps.length) {
     );
     // Initialize without credentials so the rest of the app doesn't crash.
     // Token verification will fail until credentials are provided.
-    admin.initializeApp();
+    app = initializeApp();
   }
+} else {
+  app = getApps()[0];
 }
 
-export default admin;
+export default app;

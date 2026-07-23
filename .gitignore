@@ -23,6 +23,9 @@ coverage/
 .env.local
 .env.*.local
 
+# Firebase service account keys
+*service-account*.json
+
 # Database and MongoDB-related files
 *.db
 *.sqlite

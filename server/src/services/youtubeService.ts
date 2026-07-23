@@ -59,7 +59,10 @@ export async function searchYouTubeVideos(params: {
 
           // Improve result reliability
           videoEmbeddable: "true",
-          order: "date",
+          order: "relevance", // match normal YouTube search ranking, not just newest
+          videoDuration: "medium", // 4–20 min — excludes Shorts, favors long-form
+          regionCode: "US",
+          relevanceLanguage: "en",
           safeSearch: "moderate", // strict often reduces results too aggressively
 
           key: apiKey,

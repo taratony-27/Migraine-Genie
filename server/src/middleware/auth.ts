@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import admin from '../services/firebaseAdmin';
+import { getAuth } from 'firebase-admin/auth';
+import firebaseApp from '../services/firebaseAdmin';
 
 // Extend Express Request to carry the verified Firebase user
 declare module 'express-serve-static-core' {
@@ -26,7 +27,7 @@ export const authenticateToken = async (
   }
 
   try {
-    const decoded = await admin.auth().verifyIdToken(token);
+    const decoded = await getAuth(firebaseApp).verifyIdToken(token);
     req.user = {
       uid: decoded.uid,
       email: decoded.email,
