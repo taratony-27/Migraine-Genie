@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithPopup,
   updateProfile,
 } from "firebase/auth";
@@ -99,6 +100,27 @@ const Auth: React.FC = () => {
     }
   };
 
+  const handlePasswordReset = async () => {
+    const email = formData.email.trim();
+    if (!isValidEmail(email)) {
+      showAlert("Enter your email address first, then request a reset link.", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email, {
+        url: window.location.origin,
+        handleCodeInApp: false,
+      });
+      showAlert("Password reset email sent. Check your inbox for the recovery link.", "success");
+    } catch (err: any) {
+      showAlert(friendlyError(err.code), "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     isLogin ? handleLogin() : handleSignup();
@@ -142,6 +164,23 @@ const Auth: React.FC = () => {
           <TextField label="Password" name="password" type="password" fullWidth margin="dense"
             value={formData.password} onChange={handleChange}
             helperText={!isLogin ? "At least 6 characters" : undefined} />
+
+          {isLogin && (
+            <Box textAlign="right" mt={0.5}>
+              <Link
+                component="button"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePasswordReset();
+                }}
+                underline="hover"
+                sx={{ fontSize: "0.875rem", fontWeight: 600 }}
+              >
+                Forgot password?
+              </Link>
+            </Box>
+          )}
 
           <Button
             type="submit" fullWidth variant="contained" size="large"
@@ -205,6 +244,7 @@ const friendlyError = (code: string): string => {
     "auth/too-many-requests":      "Too many attempts. Please try again later.",
     "auth/network-request-failed": "Network error. Check your connection.",
     "auth/popup-blocked":          "Popup was blocked. Please allow popups for this site.",
+    "auth/missing-email":          "Enter your email address first.",
   };
   return map[code] || "Something went wrong. Please try again.";
 };

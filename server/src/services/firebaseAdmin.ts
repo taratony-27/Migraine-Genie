@@ -1,8 +1,21 @@
-import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
+import { initializeApp, cert, getApps, App, ServiceAccount } from 'firebase-admin/app';
 import path from 'path';
 import fs from 'fs';
 
 let app: App;
+
+const parseServiceAccount = (raw: string): ServiceAccount => {
+  const source = raw.trim().startsWith('{')
+    ? raw
+    : Buffer.from(raw.trim(), 'base64').toString('utf8');
+  const serviceAccount = JSON.parse(source);
+
+  if (typeof serviceAccount.private_key === 'string') {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  }
+
+  return serviceAccount;
+};
 
 if (!getApps().length) {
   // Option A (recommended for local dev): point FIREBASE_SERVICE_ACCOUNT_PATH
@@ -20,7 +33,7 @@ if (!getApps().length) {
     const serviceAccount = JSON.parse(fs.readFileSync(resolved, 'utf8'));
     app = initializeApp({ credential: cert(serviceAccount) });
   } else if (keyJson) {
-    const serviceAccount = JSON.parse(keyJson);
+    const serviceAccount = parseServiceAccount(keyJson);
     app = initializeApp({ credential: cert(serviceAccount) });
   } else {
     console.warn(
