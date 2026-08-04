@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import DailyInput from '../models/DailyInput';
+import User from '../models/User';
 
 /**
  * [UNCHANGED]
@@ -11,48 +12,21 @@ function startOfDay(dateLike?: string | number | Date): Date {
   return d;
 }
 
-/**
- * [MODIFIED]
- * Since auth is removed, we derive userId from:
- *   1) req.query.userId
- *   2) req.params.userId
- *   3) req.body.user_id
- * Return a STRING (raw) to allow flexible parsing.
- */
-function getUserIdRaw(req: Request): string | undefined {
-  // Prioritize query, then params, then body
-  const q = (req.query?.userId as string) ?? undefined;
-  const p = (req.params?.userId as string) ?? undefined;
-  // body may be number or string; normalize to string for parsing
-  const b =
-    req.body && (req.body.user_id !== undefined && req.body.user_id !== null)
-      ? String(req.body.user_id)
-      : undefined;
-  return q ?? p ?? b;
+async function getAuthenticatedUserId(req: Request): Promise<number | undefined> {
+  if (!req.user?.uid) return undefined;
+
+  const user = await User.findOne({ firebase_uid: req.user.uid }).select('user_id').lean();
+  return typeof user?.user_id === 'number' ? user.user_id : undefined;
 }
 
 /**
- * [MODIFIED]
- * Convert raw to NUMBER (your schema uses Number for user_id).
- */
-function getUserIdNumber(req: Request): number | undefined {
-  const raw = getUserIdRaw(req);
-  if (raw === undefined) return undefined;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-/**
- * [MODIFIED]
- * SECURITY/UX change from earlier draft:
- * - No auth. We now *require* a userId via query/params/body.
- * - Returns 400 if userId missing (not 401).
+ * Return daily inputs for the authenticated Firebase user.
  */
 export const getDailyInputs = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = getUserIdNumber(req);
+    const userId = await getAuthenticatedUserId(req);
     if (userId === undefined) {
-      res.status(400).json({ message: 'userId is required (via ?userId= or body.user_id)' }); // [MODIFIED]
+      res.status(403).json({ message: 'Authenticated user profile not found' });
       return;
     }
 
@@ -67,16 +41,13 @@ export const getDailyInputs = async (req: Request, res: Response): Promise<void>
 };
 
 /**
- * [MODIFIED]
- * New endpoint:
- * Return { count, canPredict } for the specified user (no auth).
- * Counting DISTINCT DAYS with $dateTrunc so multiple same-day saves don't inflate count.
+ * Return { count, canPredict } for the authenticated user.
  */
 export const getMyDailyInputCount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = getUserIdNumber(req);
+    const userId = await getAuthenticatedUserId(req);
     if (userId === undefined) {
-      res.status(400).json({ message: 'userId is required (via ?userId= or body.user_id)' }); // [MODIFIED]
+      res.status(403).json({ message: 'Authenticated user profile not found' });
       return;
     }
 
@@ -91,26 +62,24 @@ export const getMyDailyInputCount = async (req: Request, res: Response): Promise
 };
 
 /**
- * [MODIFIED]
  * Normalize log_date to start-of-day before save.
- * Force/derive user_id from query/body; no auth context anymore.
+ * Force user_id from the authenticated Firebase user.
  */
 export const createDailyInput = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Prefer body.user_id if client is already sending it; else fall back to query
-    let userId = typeof req.body.user_id === 'number' ? req.body.user_id : getUserIdNumber(req); // [MODIFIED]
+    const userId = await getAuthenticatedUserId(req);
     if (userId === undefined) {
-      res.status(400).json({ message: 'userId is required (via ?userId= or body.user_id)' }); // [MODIFIED]
+      res.status(403).json({ message: 'Authenticated user profile not found' });
       return;
     }
 
     const payload = { ...req.body };
 
     // Ensure numeric user_id matches schema
-    payload.user_id = userId; // [MODIFIED]
+    payload.user_id = userId;
 
     // Normalize log_date (default to "today" if missing)
-    payload.log_date = startOfDay(payload.log_date); // [MODIFIED]
+    payload.log_date = startOfDay(payload.log_date);
 
     const newLog = new DailyInput(payload);
     await newLog.save();
@@ -123,9 +92,9 @@ export const createDailyInput = async (req: Request, res: Response): Promise<voi
 export const updateDailyInput = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   try {
-    const userId = getUserIdNumber(req); // [MODIFIED]
+    const userId = await getAuthenticatedUserId(req);
     if (userId === undefined) {
-      res.status(400).json({ message: 'userId is required (via ?userId= or body.user_id)' }); // [MODIFIED]
+      res.status(403).json({ message: 'Authenticated user profile not found' });
       return;
     }
 
@@ -133,12 +102,13 @@ export const updateDailyInput = async (req: Request, res: Response): Promise<voi
 
     // Keep normalization consistent if date is being changed
     if (update.log_date) {
-      update.log_date = startOfDay(update.log_date); // [MODIFIED]
+      update.log_date = startOfDay(update.log_date);
     }
+    update.user_id = userId;
 
     // Enforce ownership by user_id even without auth (caller must supply userId)
     const updatedLog = await DailyInput.findOneAndUpdate(
-      { _id: id, user_id: userId }, // [MODIFIED]
+      { _id: id, user_id: userId },
       update,
       { new: true }
     );
@@ -157,13 +127,13 @@ export const updateDailyInput = async (req: Request, res: Response): Promise<voi
 export const deleteDailyInput = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   try {
-    const userId = getUserIdNumber(req); // [MODIFIED]
+    const userId = await getAuthenticatedUserId(req);
     if (userId === undefined) {
-      res.status(400).json({ message: 'userId is required (via ?userId= or body.user_id)' }); // [MODIFIED]
+      res.status(403).json({ message: 'Authenticated user profile not found' });
       return;
     }
 
-    const deletedLog = await DailyInput.findOneAndDelete({ _id: id, user_id: userId }); // [MODIFIED]
+    const deletedLog = await DailyInput.findOneAndDelete({ _id: id, user_id: userId });
     if (!deletedLog) {
       res.status(404).json({ message: 'Entry not found' });
       return;

@@ -1,5 +1,11 @@
 import { Request, Response } from "express";
 import User from "../models/User";
+import DailyInput from "../models/DailyInput";
+import Medication from "../models/Medication";
+import Symptom from "../models/Symptom";
+import Trigger from "../models/Trigger";
+import { getAuth } from "firebase-admin/auth";
+import firebaseApp from "../services/firebaseAdmin";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
@@ -100,5 +106,39 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ message: "Update error", error: err.message });
+  }
+};
+
+// ── DELETE /api/users/me ──────────────────────────────────────────────────
+// Deletes the MongoDB profile, user-owned health records, and Firebase Auth user.
+export const deleteCurrentUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const uid = req.user?.uid;
+    if (!uid) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const user = await User.findOne({ firebase_uid: uid });
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const userId = user.user_id;
+    await Promise.all([
+      userId ? DailyInput.deleteMany({ user_id: userId }) : Promise.resolve(),
+      userId ? Medication.deleteMany({ user_id: userId }) : Promise.resolve(),
+      userId ? Symptom.deleteMany({ user_id: userId }) : Promise.resolve(),
+      userId ? Trigger.deleteMany({ user_id: userId }) : Promise.resolve(),
+      User.deleteOne({ _id: user._id }),
+    ]);
+
+    await getAuth(firebaseApp).deleteUser(uid);
+
+    res.json({ message: "Account data deleted successfully" });
+  } catch (err: any) {
+    console.error("deleteCurrentUser error:", err);
+    res.status(500).json({ message: "Delete account failed", error: err.message });
   }
 };

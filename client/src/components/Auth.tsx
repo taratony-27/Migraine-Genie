@@ -62,7 +62,7 @@ const Auth: React.FC = () => {
       await signInWithEmailAndPassword(auth, formData.email.trim(), formData.password);
       await afterSignIn();
     } catch (err: any) {
-      showAlert(friendlyError(err.code), "error");
+      showAlert(friendlyError(err), "error");
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,7 @@ const Auth: React.FC = () => {
       await sendEmailVerification(cred.user);
       await afterSignIn(formData.name.trim());
     } catch (err: any) {
-      showAlert(friendlyError(err.code), "error");
+      showAlert(friendlyError(err), "error");
     } finally {
       setLoading(false);
     }
@@ -93,7 +93,7 @@ const Auth: React.FC = () => {
       await afterSignIn();
     } catch (err: any) {
       if (err.code !== "auth/popup-closed-by-user") {
-        showAlert(friendlyError(err.code), "error");
+        showAlert(friendlyError(err), "error");
       }
     } finally {
       setLoading(false);
@@ -115,7 +115,7 @@ const Auth: React.FC = () => {
       });
       showAlert("Password reset email sent. Check your inbox for the recovery link.", "success");
     } catch (err: any) {
-      showAlert(friendlyError(err.code), "error");
+      showAlert(friendlyError(err), "error");
     } finally {
       setLoading(false);
     }
@@ -233,7 +233,19 @@ const Auth: React.FC = () => {
 };
 
 // Map Firebase error codes to user-friendly messages
-const friendlyError = (code: string): string => {
+const friendlyError = (err: any): string => {
+  const code = typeof err === "string" ? err : err?.code;
+  const apiMessage = err?.response?.data?.message;
+
+  if (apiMessage) {
+    const detail = err?.response?.data?.error;
+    return detail ? `${apiMessage}: ${detail}` : apiMessage;
+  }
+
+  if (err?.message && !code) {
+    return err.message;
+  }
+
   const map: Record<string, string> = {
     "auth/user-not-found":         "No account found with that email.",
     "auth/wrong-password":         "Incorrect password.",
@@ -245,6 +257,9 @@ const friendlyError = (code: string): string => {
     "auth/network-request-failed": "Network error. Check your connection.",
     "auth/popup-blocked":          "Popup was blocked. Please allow popups for this site.",
     "auth/missing-email":          "Enter your email address first.",
+    "auth/operation-not-allowed":  "This sign-in method is disabled in Firebase Authentication.",
+    "auth/popup-closed-by-user":   "Google sign-in was cancelled.",
+    "auth/unauthorized-domain":    "This domain is not authorized in Firebase Authentication.",
   };
   return map[code] || "Something went wrong. Please try again.";
 };
