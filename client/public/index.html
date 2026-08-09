@@ -2,42 +2,82 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#0d47a1" />
+
+    <title>Migraine Genie — Migraine Diary &amp; Trigger Tracker</title>
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Migraine Genie is a free migraine diary that turns your daily logs into clear patterns — track symptoms, sleep and triggers, then see what actually sets your migraines off."
     />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+    <link rel="canonical" href="https://migraine-genie.com/" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="Migraine Genie" />
+    <meta name="application-name" content="Migraine Genie" />
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>Migraine Genie</title>
+    <!-- Open Graph (Facebook, LinkedIn, WhatsApp, iMessage) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Migraine Genie" />
+    <meta property="og:title" content="Migraine Genie — Migraine Diary &amp; Trigger Tracker" />
+    <meta
+      property="og:description"
+      content="Track your migraines, uncover your triggers, and get AI-powered insights from your own diary."
+    />
+    <meta property="og:url" content="https://migraine-genie.com/" />
+    <meta property="og:image" content="https://migraine-genie.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Migraine Genie — track your migraines and understand your triggers" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Migraine Genie — Migraine Diary &amp; Trigger Tracker" />
+    <meta
+      name="twitter:description"
+      content="Track your migraines, uncover your triggers, and get AI-powered insights from your own diary."
+    />
+    <meta name="twitter:image" content="https://migraine-genie.com/og-image.png" />
+
+    <!-- Icons & PWA -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <meta name="apple-mobile-web-app-title" content="Migraine Genie" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Structured data: helps search engines describe the app in results -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Migraine Genie",
+        "url": "https://migraine-genie.com/",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "description": "A migraine diary and trigger tracker that turns daily symptom logs into clear patterns and AI-powered insights.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "Daily migraine diary with 25 tracked symptoms",
+          "Trigger tracking across food, weather, activity and lifestyle",
+          "Visual reports, trigger rankings and a severity heatmap",
+          "AI assistant grounded in your own logged history",
+          "Medication tracking"
+        ],
+        "disclaimer": "Migraine Genie is a self-tracking tool, not a medical device. It does not diagnose, treat, or cure any condition."
+      }
+    </script>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>
+      You need to enable JavaScript to use Migraine Genie — a migraine diary and
+      trigger tracker.
+    </noscript>
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
   </body>
 </html>

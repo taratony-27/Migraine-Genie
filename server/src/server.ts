@@ -35,7 +35,7 @@ connectDB()
 
 // Base Route (Health Check)
 app.get('/', (req: Request, res: Response) => {
-  res.send('AI Health Tracker API is running');
+  res.send('Migraine Genie API is running');
 });
 
 // API Routes

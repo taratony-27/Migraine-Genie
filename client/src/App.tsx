@@ -9,10 +9,12 @@ import AIAssistant from './components/AIAssistant';
 import Visualization from './components/Visualization';
 import Layout from './components/Layout';
 import VerifyEmail from "./pages/VerifyEmail";
+import Seo from './components/Seo';
 
 const App: React.FC = () => {
   return (
     <Router>
+      <Seo />
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />

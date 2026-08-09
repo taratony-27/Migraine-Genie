@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Divider, Link, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { SITE } from '../config/site';
 
 const Footer: React.FC = () => {
   const navigate = useNavigate();
@@ -32,10 +33,13 @@ const Footer: React.FC = () => {
         {/* Brand */}
         <Box>
           <Typography variant="h6" fontWeight={800} color="#fff" mb={1}>
-            MigraineGenie
+            {SITE.name}
           </Typography>
           <Typography variant="body2" sx={{ maxWidth: 240, lineHeight: 1.7, opacity: 0.75 }}>
             Your AI-powered companion for understanding and managing migraines.
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, opacity: 0.55 }}>
+            {SITE.domain}
           </Typography>
         </Box>
 
@@ -59,16 +63,16 @@ const Footer: React.FC = () => {
           <Typography variant="overline" color="rgba(255,255,255,0.5)" fontWeight={700}>
             Support
           </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.75 }}>
-            migrainegenie@support.com
-          </Typography>
+          <Link href={`mailto:${SITE.supportEmail}`} sx={linkSx}>
+            {SITE.supportEmail}
+          </Link>
         </Stack>
       </Box>
 
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)', mb: 3 }} />
 
       <Typography variant="body2" textAlign="center" sx={{ opacity: 0.5 }}>
-        © {new Date().getFullYear()} MigraineGenie. All rights reserved.
+        © {new Date().getFullYear()} {SITE.name}. All rights reserved.
       </Typography>
     </Box>
   );

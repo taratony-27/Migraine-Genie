@@ -4,6 +4,8 @@
 
 **A migraine tracking and pattern-discovery app — log your symptoms, spot your triggers, and understand your headaches.**
 
+### 🌐 [migraine-genie.com](https://migraine-genie.com)
+
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://expressjs.com/)
@@ -172,6 +174,8 @@ Create `client/.env`:
 REACT_APP_API_BASE=http://localhost:5001
 ```
 
+Brand and SEO metadata is centralized in `client/src/config/site.ts`.
+
 Firebase web config lives in `client/src/services/firebase.ts` — point it at your own project.
 
 ### 4. Run both services
@@ -240,6 +244,8 @@ All routes below require an `Authorization: Bearer <firebase-id-token>` header u
 **The AI is scoped and guarded.** The assistant's system prompt restricts it to migraine and headache topics, forbids formal diagnosis, and escalates red-flag symptoms toward real medical care. Requests walk a fallback chain of nine models so a single provider outage doesn't take the feature down.
 
 **One entry per day per user** is enforced by a compound unique index on `{ user_id, log_date }`.
+
+**SEO is route-aware.** As a single-page app, the static tags in `index.html` only describe the first page loaded. A `<Seo />` component syncs title, description, canonical URL, and Open Graph tags to the current route — and marks every signed-in screen `noindex, nofollow` so personal health pages stay out of search results.
 
 ---
 

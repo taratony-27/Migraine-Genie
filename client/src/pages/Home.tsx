@@ -148,6 +148,7 @@ const Home: React.FC = () => {
                 />
                 <Typography
                   variant={isSmall ? 'h4' : 'h2'}
+                  component="h1"
                   fontWeight={800}
                   lineHeight={1.15}
                   mb={2}
@@ -251,6 +252,7 @@ const Home: React.FC = () => {
         <Container maxWidth="md">
           <Typography
             variant={isSmall ? 'h5' : 'h4'}
+            component="h2"
             fontWeight={800}
             color="#0d47a1"
             textAlign="center"

@@ -1,3 +1,14 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+
+# Signed-in app screens hold personal health data and have no public value.
+Disallow: /dashboard
+Disallow: /daily-log
+Disallow: /visualization
+Disallow: /ai-assistant
+Disallow: /wellness-program
+Disallow: /account
+Disallow: /verify-email
+
+Sitemap: https://migraine-genie.com/sitemap.xml
