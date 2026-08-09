@@ -15,6 +15,7 @@ import GrainIcon from '@mui/icons-material/Grain';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../services/api';
+import { toDateKey } from '../utils/date';
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
 
@@ -150,7 +151,9 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     return {
       user_id: isEdit ? (user_id ?? currentUserId) : currentUserId,
       log_id: isEdit ? log_id : Date.now(),
-      log_date: date ? `${date}T00:00:00` : undefined,
+      // Send the plain calendar day, anchored to UTC, so the server stores the
+      // exact day the user picked no matter which timezone either side is in.
+      log_date: date ? `${date}T00:00:00.000Z` : undefined,
       duration: duration === '' ? null : String(duration),
       intensity: intensity || null,
       sleep: sleep === '' ? null : Number(sleep),
@@ -180,6 +183,16 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
 
+  const resetEntry = () => {
+    setEntry({
+      date: '', duration: '', intensity: '', sleep: '', screentime: '',
+      potentialTrigger: '', weather: '', food: '', activity: '',
+      ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
+      notes: '',
+    });
+    setPotentialTriggers([]); setWeatherTriggers([]); setFoodTriggers([]); setActivityTriggers([]);
+  };
+
   const handleSubmit = async () => {
     try {
       if (!entry.date) return notify('Date is required.', 'warning');
@@ -196,15 +209,9 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
       const saved = res.data;
       setHistory(prev => (isEdit ? prev.map(l => (l._id === saved._id ? saved : l)) : [saved, ...prev]));
 
-      setEntry({
-        date: '', duration: '', intensity: '', sleep: '', screentime: '',
-        potentialTrigger: '', weather: '', food: '', activity: '',
-        ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
-        notes: '',
-      });
-      setPotentialTriggers([]); setWeatherTriggers([]); setFoodTriggers([]); setActivityTriggers([]);
+      resetEntry();
 
-      notify('Migraine diary entry saved successfully!', 'success');
+      notify(isEdit ? 'Entry updated successfully!' : 'Migraine diary entry saved successfully!', 'success');
       await refreshCount();
     } catch (error: any) {
       console.error('Error submitting entry:', error);
@@ -225,11 +232,35 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     setShowHistory(prev => !prev);
   };
 
+  // Symptoms are stored as labels ("Mild"/"Yes"), but the inputs are numeric.
+  const symptomValuesFromLog = (symptoms: Record<string, any> = {}) =>
+    Object.fromEntries(
+      symptomInputs.map(({ key, type }) => {
+        const raw = String(symptoms?.[key] ?? '').trim();
+        if (type === 'switch') return [key, raw.toLowerCase() === 'yes' ? 1 : 0];
+        const idx = severityLabels.findIndex((l) => l.toLowerCase() === raw.toLowerCase());
+        return [key, idx >= 0 ? idx : 0];
+      })
+    );
+
   const handleEdit = (log:any) => {
     setEntry({
       ...log,
-      date: log.log_date ? String(log.log_date).substring(0, 10) : '',
+      date: toDateKey(log.log_date),
+      duration: log.duration ?? '',
+      intensity: log.intensity ?? '',
+      sleep: log.sleep ?? '',
+      screentime: log.screentime ?? '',
+      notes: log.notes ?? '',
+      potentialTrigger: log.trigger?.potentialTrigger || '',
+      weather: log.trigger?.weather || '',
+      food: log.trigger?.food || '',
+      activity: log.trigger?.activity || '',
+      ...symptomValuesFromLog(log.symptoms),
     });
+    // The form and the history list share the same slot, so close the history
+    // to reveal the entry that was just loaded for editing.
+    setShowHistory(false);
     const trig = log.trigger || {};
     setPotentialTriggers((trig.potentialTrigger || '').split(',').map((s:string) => s.trim()).filter(Boolean));
     setWeatherTriggers((trig.weather || '').split(',').map((s:string) => s.trim()).filter(Boolean));
@@ -247,15 +278,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     try {
       await api.delete(`/api/daily-inputs/${logId}`, { params: { userId: currentUserId } });
       setHistory((prevHistory) => prevHistory.filter((log) => log._id !== logId));
-      if (entry._id === logId) {
-        setEntry({
-          date: '', duration: '', intensity: '', sleep: '', screentime: '',
-          potentialTrigger: '', weather: '', food: '', activity: '',
-          ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
-          notes: '',
-        });
-        setPotentialTriggers([]); setWeatherTriggers([]); setFoodTriggers([]); setActivityTriggers([]);
-      }
+      if (entry._id === logId) resetEntry();
       notify('Entry deleted.', 'success');
       await refreshCount();
     } catch (error) {
@@ -366,10 +389,10 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                   >Delete</Button>
                 </Box>
 
-                <Typography variant="subtitle2">Date: {String(log.log_date || '').substring(0, 10) || '-'}</Typography>
+                <Typography variant="subtitle2">Date: {toDateKey(log.log_date) || '-'}</Typography>
                 <Typography variant="body2">Duration: {log.duration ?? '-'} hours</Typography>
                 <Typography variant="body2">Intensity: {log.intensity ?? '-'}</Typography>
-                <Typography variant="body2">Sleep: {log.sleep ?? '-'}</Typography>
+                <Typography variant="body2">Sleep last night: {log.sleep ?? '-'}</Typography>
                 <Typography variant="body2">Screentime: {log.screentime ?? '-'}</Typography>
                 <Typography variant="body2">Potential Trigger: {log.trigger?.potentialTrigger || '-'}</Typography>
                 <Typography variant="body2">Weather: {log.trigger?.weather || '-'}</Typography>
@@ -398,6 +421,23 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         </Box>
       ) : (
         <Box display="flex" flexDirection="column" gap={2}>
+              {entry._id && (
+                <Box
+                  p={2}
+                  borderRadius={2}
+                  bgcolor="#E3F2FD"
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  gap={2}
+                >
+                  <Typography variant="body2">
+                    Editing the entry for {entry.date || 'this day'}.
+                  </Typography>
+                  <Button size="small" onClick={resetEntry}>Cancel edit</Button>
+                </Box>
+              )}
+
               <TextField
                 label="Date"
                 type="date"
@@ -431,7 +471,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
               </TextField>
             
               <TextField
-              label="Sleep (in hours)"
+              label="Sleep last night (in hours)"
               type="number"
               fullWidth
               name="sleep"
@@ -1215,7 +1255,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
             onClick={handleSubmit}
             sx={{ backgroundColor: '#1565c0', '&:hover': { backgroundColor: '#0d47a1' } }}
           >
-            Save Entry
+            {entry._id ? 'Update Entry' : 'Save Entry'}
           </Button>
         </Box>
       )}

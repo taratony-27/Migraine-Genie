@@ -15,6 +15,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import api from '../services/api';
+import { dateSortValue, formatLogDate } from '../utils/date';
 
 type Entry = {
   _id?: string;
@@ -57,14 +58,7 @@ const coerceTriggers = (trigger: any): string[] => {
   return [];
 };
 
-const fmtDate = (iso?: string) => {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString();
-  } catch {
-    return String(iso).slice(0, 10);
-  }
-};
+const fmtDate = (iso?: string) => formatLogDate(iso);
 
 const DailyLogHistory: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -107,11 +101,7 @@ const DailyLogHistory: React.FC = () => {
   // newest first
   const sorted = useMemo(
     () =>
-      [...entries].sort((a, b) => {
-        const da = a.log_date ? +new Date(a.log_date) : 0;
-        const db = b.log_date ? +new Date(b.log_date) : 0;
-        return db - da;
-      }),
+      [...entries].sort((a, b) => dateSortValue(b.log_date) - dateSortValue(a.log_date)),
     [entries]
   );
 

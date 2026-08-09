@@ -70,6 +70,48 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// ── GET /api/users/me ─────────────────────────────────────────────────────
+// Profile plus the derived stats the Account page shows (joined date,
+// total diary entries, most recent intensity).
+export const getMe = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const uid = req.user?.uid;
+    if (!uid) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const user = await User.findOne({ firebase_uid: uid })
+      .select("-password_hash -email_verify_token_hash -email_verify_token_expires_at")
+      .lean();
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const userId = user.user_id;
+    const [totalEntries, latest] = await Promise.all([
+      typeof userId === "number" ? DailyInput.countDocuments({ user_id: userId }) : 0,
+      typeof userId === "number"
+        ? DailyInput.findOne({ user_id: userId }).sort({ log_date: -1 }).select("intensity").lean()
+        : null,
+    ]);
+
+    res.json({
+      user,
+      stats: {
+        joined: user.created_at ? new Date(user.created_at).toISOString() : null,
+        totalEntries,
+        recentIntensity: latest?.intensity || "N/A",
+      },
+    });
+  } catch (err: any) {
+    console.error("getMe error:", err);
+    res.status(500).json({ message: "Failed to load account", error: err.message });
+  }
+};
+
 // ── PUT /api/users/update ─────────────────────────────────────────────────
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {

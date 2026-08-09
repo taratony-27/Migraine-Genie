@@ -3,13 +3,22 @@ import DailyInput from '../models/DailyInput';
 import User from '../models/User';
 
 /**
- * [UNCHANGED]
- * Normalize a Date to the start of the day (00:00:00.000).
+ * Normalize a log date to UTC midnight of the calendar day the user picked.
+ *
+ * The client sends a plain calendar date ("2025-06-09" or "2025-06-09T00:00:00").
+ * Anchoring to UTC — instead of the server's local midnight — keeps the stored
+ * instant identical regardless of where the API runs, so the day never shifts
+ * when it is read back in another timezone.
  */
 function startOfDay(dateLike?: string | number | Date): Date {
+  if (typeof dateLike === 'string') {
+    const match = dateLike.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    }
+  }
   const d = dateLike ? new Date(dateLike) : new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
 async function getAuthenticatedUserId(req: Request): Promise<number | undefined> {

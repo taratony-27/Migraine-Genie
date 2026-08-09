@@ -15,6 +15,16 @@ import { sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import api from '../services/api';
 
+// created_at is a real timestamp (not a calendar-only date), so local
+// formatting is correct here.
+const formatJoined = (value?: string | null) => {
+  if (!value) return 'Unknown';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? 'Unknown'
+    : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
+
 const Account: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<{
@@ -37,21 +47,60 @@ const Account: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
+    // Show whatever is cached immediately, then replace it with live data
+    // (joined date, entry count, latest intensity) from the API.
     const stored = localStorage.getItem('user');
     if (stored) {
-      const parsed = JSON.parse(stored);
-      const fullUser = {
-        name: parsed.name,
-        email: parsed.email,
-        joined: parsed.joined || 'Unknown',
-        dateOfBirth: parsed.date_of_birth?.slice(0, 10) || '',
-        gender: parsed.gender || '',
-        totalEntries: parsed.totalEntries ?? 0,
-        recentIntensity: parsed.recentIntensity ?? 'N/A',
-      };
-      setUser(fullUser);
-      setEditedUser(fullUser);
+      try {
+        const parsed = JSON.parse(stored);
+        const cached = {
+          name: parsed.name,
+          email: parsed.email,
+          joined: formatJoined(parsed.created_at || parsed.joined),
+          dateOfBirth: parsed.date_of_birth?.slice(0, 10) || '',
+          gender: parsed.gender || '',
+          totalEntries: parsed.totalEntries ?? 0,
+          recentIntensity: parsed.recentIntensity ?? 'N/A',
+        };
+        setUser(cached);
+        setEditedUser(cached);
+      } catch {
+        // Corrupt cache — the fetch below is the source of truth anyway.
+      }
     }
+
+    const loadAccount = async () => {
+      try {
+        const { data } = await api.get('/api/users/me');
+        const profile = data?.user ?? {};
+        const stats = data?.stats ?? {};
+        const fresh = {
+          name: profile.name || '',
+          email: profile.email || '',
+          joined: formatJoined(stats.joined || profile.created_at),
+          dateOfBirth: profile.date_of_birth ? String(profile.date_of_birth).slice(0, 10) : '',
+          gender: profile.gender || '',
+          totalEntries: stats.totalEntries ?? 0,
+          recentIntensity: stats.recentIntensity || 'N/A',
+        };
+        if (!mounted) return;
+        setUser(fresh);
+        setEditedUser(fresh);
+        localStorage.setItem('user', JSON.stringify({
+          ...JSON.parse(localStorage.getItem('user') || '{}'),
+          ...profile,
+          totalEntries: fresh.totalEntries,
+          recentIntensity: fresh.recentIntensity,
+        }));
+      } catch (err) {
+        console.error('Failed to load account', err);
+      }
+    };
+
+    loadAccount();
+    return () => { mounted = false; };
   }, []);
 
   const handleEditChange = (field: string, value: string) =>
