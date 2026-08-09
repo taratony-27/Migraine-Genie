@@ -476,37 +476,19 @@ const Visualization: React.FC = () => {
             <Typography variant="body2" color="text.secondary">
               Top 3 Symptoms
             </Typography>
-            {(() => {
-              const symptomCounts: Record<string, number> = {};
-              entries.forEach((e) => {
-                if (e.symptoms) {
-                  Object.entries(e.symptoms).forEach(([symptom, value]) => {
-                    if (value && String(value).toLowerCase() !== 'no') {
-                      symptomCounts[symptom] = (symptomCounts[symptom] || 0) + 1;
-                    }
-                  });
-                }
-              });
-              const top3 = Object.entries(symptomCounts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3);
-
-              return (
-                <Box mt={1} display="flex" flexDirection="column" gap={0.5}>
-                  {top3.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
-                      —
-                    </Typography>
-                  ) : (
-                    top3.map(([symptom, count]) => (
-                      <Typography key={symptom} variant="body2">
-                        {symptom} ({count})
-                      </Typography>
-                    ))
-                  )}
-                </Box>
-              );
-            })()}
+            <Box mt={1} display="flex" flexDirection="column" gap={0.5}>
+              {topSymptoms.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  —
+                </Typography>
+              ) : (
+                topSymptoms.slice(0, 3).map(([symptom, count]) => (
+                  <Typography key={symptom} variant="body2">
+                    {symptom} ({count})
+                  </Typography>
+                ))
+              )}
+            </Box>
           </Paper>
         </Grid>
       </Grid>
