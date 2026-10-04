@@ -1,5 +1,5 @@
 {
-  "name": "my_node_app",
+  "name": "migraine-genie-api",
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {

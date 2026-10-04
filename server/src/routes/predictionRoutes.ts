@@ -3,8 +3,12 @@ import express, { Request, Response } from "express";
 import axios from "axios";
 import DailyInput from "../models/DailyInput";
 import Prediction from "../models/Prediction";
+import User from "../models/User";
+import { authenticateToken } from "../middleware/auth";
 
 const router = express.Router();
+
+router.use(authenticateToken);
 
 type OpenRouterChatResponse = {
   choices: { message: { content: string } }[];
@@ -37,6 +41,13 @@ function toNumber(val: unknown): number | null {
   if (val === null || val === undefined) return null;
   const parsed = parseFloat(String(val));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function getAuthenticatedUserId(req: Request): Promise<number | undefined> {
+  if (!req.user?.uid) return undefined;
+
+  const user = await User.findOne({ firebase_uid: req.user.uid }).select("user_id").lean();
+  return typeof user?.user_id === "number" ? user.user_id : undefined;
 }
 
 function normalizeTriggerLabel(input: unknown): string | null {
@@ -353,10 +364,10 @@ async function callMigraineModelWithFallback(
 // ───────────────────────────────────────────
 
 router.get("/generate", async (req: Request, res: Response): Promise<void> => {
-  const userId = typeof req.query.userId === "string" ? req.query.userId : "";
+  const userId = await getAuthenticatedUserId(req);
 
   if (!userId) {
-    res.status(400).json({ message: "Missing userId" });
+    res.status(403).json({ message: "Authenticated user profile not found" });
     return;
   }
 

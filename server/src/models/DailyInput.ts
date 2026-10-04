@@ -25,14 +25,13 @@ const DailyInputSchema = new mongoose.Schema({
 }, { collection: 'dailyInputs' });
 
 /**
- * [MODIFIED] Normalize log_date to start-of-day (00:00:00.000) so “distinct days” are stable.
- * Works whether client sends an ISO string or a Date object with time.
+ * Normalize log_date to UTC start-of-day so “distinct days” are stable and the
+ * calendar day never shifts when the value is rendered in another timezone.
  */
 DailyInputSchema.pre('save', function (next) {
   if (this.log_date instanceof Date) {
-    const d = new Date(this.log_date);
-    d.setHours(0, 0, 0, 0);
-    this.log_date = d;
+    const d = this.log_date;
+    this.log_date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
   }
   next();
 });

@@ -2,8 +2,12 @@ import express, { Request, Response } from "express";
 import axios from "axios";
 import DailyInput from "../models/DailyInput";
 import Symptom from "../models/Symptom";
+import User from "../models/User";
+import { authenticateToken } from "../middleware/auth";
 
 const router = express.Router();
+
+router.use(authenticateToken);
 
 type OpenRouterChatResponse = {
   choices: { message: { content: string } }[];
@@ -22,6 +26,13 @@ function toNumber(val: unknown): number | null {
   if (val === null || val === undefined) return null;
   const parsed = parseFloat(String(val));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function getAuthenticatedUserId(req: Request): Promise<number | undefined> {
+  if (!req.user?.uid) return undefined;
+
+  const user = await User.findOne({ firebase_uid: req.user.uid }).select("user_id").lean();
+  return typeof user?.user_id === "number" ? user.user_id : undefined;
 }
 
 // Adjust to match your UI mapping exactly
@@ -328,13 +339,12 @@ INSTRUCTIONS:
 
 // ───────────────────────────────────────────
 // ROUTE: POST /api/assistant/doctor-chat
-// body: { userId?: string | number, messages: {role, content}[] }
+// body: { messages: {role, content}[] }
 // ───────────────────────────────────────────
 
 router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { userId, messages } = req.body as {
-      userId?: string | number;
+    const { messages } = req.body as {
       messages: FrontendChatMessage[];
     };
 
@@ -347,14 +357,9 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
     let symptomStats: any | null = null;
     let contextData: any[] | null = null;
 
-    if (userId) {
-      // [FIXED]: Safely cast user_id to match your Number-based database schema 
-      let targetUserId: any = userId;
-      const parsedNum = Number(userId);
-      if (Number.isFinite(parsedNum)) {
-        targetUserId = parsedNum;
-      }
+    const targetUserId = await getAuthenticatedUserId(req);
 
+    if (targetUserId !== undefined) {
       // [FIXED]: Sort by 'log_date' instead of 'created_at' to match your data schema
       const recentLogs = await DailyInput.find({ user_id: targetUserId })
         .sort({ log_date: -1 })

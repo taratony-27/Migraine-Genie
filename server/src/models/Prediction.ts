@@ -11,10 +11,13 @@ const PredictionSchema = new mongoose.Schema({
       { icon: String, label: String, risk: String }
     ],
     forecast: [
-      { day: String, risk: String }
+      { day: String, risk: Number }
     ],
-    recommendations: [String]
+    recommendations: [String],
+    encouragement: String,
+    confidence: { type: String, enum: ["Low", "Medium", "High"] }
   },
+  model_used: { type: String },
   
   updated_at: { type: Date, default: Date.now }
 }, { collection: 'predictions' });

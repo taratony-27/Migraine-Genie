@@ -3,6 +3,7 @@ import {
   AppBar, Toolbar, Typography, Button, IconButton,
   Menu, MenuItem, Avatar, Box, useScrollTrigger
 } from '@mui/material';
+import { SITE } from '../config/site';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const Header: React.FC = () => {
@@ -61,7 +62,7 @@ const Header: React.FC = () => {
             letterSpacing: '-0.3px',
           }}
         >
-          MigraineGenie
+          {SITE.name}
         </Typography>
 
         {isLoggedIn ? (

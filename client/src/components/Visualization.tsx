@@ -27,6 +27,7 @@ import {
 import dayjs from 'dayjs';
 import api from '../services/api';
 import { computeVmPathiScore, VM_PATHI_MAX_SCORE } from '../constants/vmPathi';
+import { dateSortValue, formatLogDate, toDateKey } from '../utils/date';
 
 ChartJS.register(
   CategoryScale,
@@ -60,11 +61,60 @@ type Entry = {
 const entryVmPathiScore = (entry: Entry): number =>
   typeof entry.vmPathiScore === 'number' ? entry.vmPathiScore : computeVmPathiScore(entry.symptoms);
 
-const formatTrigger = (t: Entry['trigger']) => {
-  if (!t || typeof t !== 'object') return '—';
+// Triggers are stored as the slug values used by the diary toggles.
+const TRIGGER_LABELS: Record<string, string> = {
+  stress: 'Stress',
+  lesssleep: 'Less Sleep',
+  dehydration: 'Dehydration',
+  hormonalchanges: 'Hormonal Changes',
+  certainfoods: 'Certain Foods',
+  weather: 'Weather',
+  lights: 'Bright Lights',
+  noise: 'Noise',
+  scents: 'Strong Scents',
+  sunny: 'Sunny',
+  cloudy: 'Cloudy',
+  thunder: 'Thunderstorm',
+  windy: 'Windy',
+  rainy: 'Rainy',
+  snowy: 'Snowy',
+  alcohol: 'Alcohol',
+  caffeine: 'Caffeine',
+  citrus: 'Citrus Fruits',
+  banana: 'Banana',
+  avocado: 'Avocado',
+  cheese: 'Cheese',
+  milk: 'Milk',
+  yogurt: 'Yogurt',
+  icecream: 'Ice cream',
+  chocolate: 'Chocolate',
+  peanutbutter: 'Peanut butter',
+  nuts: 'Nuts',
+  processedmeats: 'Processed meats',
+  fermentedfoods: 'Fermented foods',
+  msg: 'Foods with MSG',
+  reading: 'Reading',
+  excersing: 'Exercising',
+  traveling: 'Traveling',
+  socializing: 'Socializing',
+  chores: 'Chores',
+  shopping: 'Shopping',
+  outside: 'Time Outside',
+  headphones: 'Wearing Headphones',
+  crowd: 'Being in Crowds',
+};
+
+const triggerLabel = (slug: string) =>
+  TRIGGER_LABELS[slug.trim().toLowerCase()] ||
+  slug.trim().replace(/^./, (c) => c.toUpperCase());
+
+/** Flatten an entry's trigger object into a de-duplicated list of slugs. */
+const triggerList = (t: Entry['trigger']): string[] => {
+  if (!t || typeof t !== 'object') return [];
   const parts = [t.potentialTrigger, t.weather, t.food, t.activity]
-    .filter((x): x is string => !!x && String(x).trim().length > 0);
-  return parts.length ? parts.join(' · ') : '—';
+    .filter((x): x is string => !!x)
+    .flatMap((s) => String(s).split(',').map((x) => x.trim()).filter(Boolean));
+  return Array.from(new Set(parts.map((p) => p.toLowerCase())));
 };
 
 const getHeatColor = (score: number) => {
@@ -200,17 +250,22 @@ const Visualization: React.FC = () => {
     };
   }, []);
 
-  const { barDataFrequency, barDataDuration, lineData, severityByDate, topSymptoms } = useMemo(() => {
+  const {
+    barDataFrequency,
+    barDataDuration,
+    lineData,
+    barDataTriggers,
+    severityByDate,
+    topSymptoms,
+    topTriggers,
+  } = useMemo(() => {
     const parsed = entries
       .filter((e) => e.log_date && e.intensity && e.duration !== undefined && e.duration !== null)
-      .map((e) => {
-        const d = new Date(e.log_date);
-        return {
-          dateKey: dayjs(d).format('YYYY-MM-DD'),
-          intensity: String(e.intensity),
-          duration: Number(e.duration),
-        };
-      });
+      .map((e) => ({
+        dateKey: toDateKey(e.log_date),
+        intensity: String(e.intensity),
+        duration: Number(e.duration),
+      }));
 
     const intensityCounts: Record<string, number> = {};
     const intensityDurations: Record<string, number> = {};
@@ -226,10 +281,16 @@ const Visualization: React.FC = () => {
 
     const sevByDate: Record<string, number> = {};
     const symptomCounts: Record<string, number> = {};
+    const triggerCounts: Record<string, number> = {};
 
     entries.forEach((entry) => {
-      const key = dayjs(entry.log_date).format('YYYY-MM-DD');
+      const key = toDateKey(entry.log_date);
       const symptoms = entry.symptoms || {};
+
+      // Count each trigger once per entry.
+      triggerList(entry.trigger).forEach((slug) => {
+        triggerCounts[slug] = (triggerCounts[slug] || 0) + 1;
+      });
 
       Object.entries(symptoms).forEach(([name, val]) => {
         const valStr = String(val ?? '').toLowerCase();
@@ -245,6 +306,9 @@ const Visualization: React.FC = () => {
     const topSymptoms = Object.entries(symptomCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6);
+
+    const rankedTriggers = Object.entries(triggerCounts).sort((a, b) => b[1] - a[1]);
+    const chartTriggers = rankedTriggers.slice(0, 10);
 
     return {
       barDataFrequency: {
@@ -283,8 +347,20 @@ const Visualization: React.FC = () => {
           },
         ],
       },
+      barDataTriggers: {
+        labels: chartTriggers.map(([slug]) => triggerLabel(slug)),
+        datasets: [
+          {
+            label: 'Entries logged with this trigger',
+            data: chartTriggers.map(([, count]) => count),
+            backgroundColor: '#7e57c2',
+            borderRadius: 6,
+          },
+        ],
+      },
       severityByDate: sevByDate,
       topSymptoms,
+      topTriggers: rankedTriggers.slice(0, 3),
     };
   }, [entries]);
 
@@ -317,6 +393,21 @@ const Visualization: React.FC = () => {
     },
   };
 
+  // Horizontal bars keep the trigger names readable however long they get.
+  const triggerChartOptions = {
+    indexAxis: 'y' as const,
+    responsive: true,
+    maintainAspectRatio: false as const,
+    plugins: {
+      legend: { display: false },
+      title: { display: false },
+    },
+    scales: {
+      x: { beginAtZero: true, ticks: { precision: 0 } },
+      y: { ticks: { autoSkip: false } },
+    },
+  };
+
   if (loading) {
     return (
       <Box p={3} display="flex" justifyContent="center" alignItems="center" minHeight={240}>
@@ -342,7 +433,7 @@ const Visualization: React.FC = () => {
 
       {/* KPI Cards */}
       <Grid container spacing={2} mb={2}>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={6} sm={3}>
           <Paper sx={{ ...card, minHeight: 100 }}>
             <Typography variant="body2" color="text.secondary">
               Total Entries
@@ -350,52 +441,54 @@ const Visualization: React.FC = () => {
             <Typography variant="h5" fontWeight="bold">{entries.length}</Typography>
           </Paper>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={6} sm={3}>
           <Paper sx={{ ...card, minHeight: 100 }}>
             <Typography variant="body2" color="text.secondary">
               Tracked Days
             </Typography>
             <Typography variant="h5" fontWeight="bold">
-              {new Set(entries.map((e) => dayjs(e.log_date).format('YYYY-MM-DD'))).size}
+              {new Set(entries.map((e) => toDateKey(e.log_date))).size}
             </Typography>
           </Paper>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={3}>
+          <Paper sx={{ ...card, minHeight: 100, display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="body2" color="text.secondary">
+              Top 3 Triggers
+            </Typography>
+            <Box mt={1} display="flex" flexDirection="column" gap={0.5}>
+              {topTriggers.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  —
+                </Typography>
+              ) : (
+                topTriggers.map(([slug, count]) => (
+                  <Typography key={slug} variant="body2">
+                    {triggerLabel(slug)} ({count})
+                  </Typography>
+                ))
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={3}>
           <Paper sx={{ ...card, minHeight: 100, display: 'flex', flexDirection: 'column' }}>
             <Typography variant="body2" color="text.secondary">
               Top 3 Symptoms
             </Typography>
-            {(() => {
-              const symptomCounts: Record<string, number> = {};
-              entries.forEach((e) => {
-                if (e.symptoms) {
-                  Object.entries(e.symptoms).forEach(([symptom, value]) => {
-                    if (value && String(value).toLowerCase() !== 'no') {
-                      symptomCounts[symptom] = (symptomCounts[symptom] || 0) + 1;
-                    }
-                  });
-                }
-              });
-              const top3 = Object.entries(symptomCounts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3);
-
-              return (
-                <Box mt={1} display="flex" flexDirection="column" gap={0.5}>
-                  {top3.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
-                      —
-                    </Typography>
-                  ) : (
-                    top3.map(([symptom]) => (
-                      <Typography key={symptom} variant="body2">
-                        {symptom}
-                      </Typography>
-                    ))
-                  )}
-                </Box>
-              );
-            })()}
+            <Box mt={1} display="flex" flexDirection="column" gap={0.5}>
+              {topSymptoms.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  —
+                </Typography>
+              ) : (
+                topSymptoms.slice(0, 3).map(([symptom]) => (
+                  <Typography key={symptom} variant="body2">
+                    {symptom}
+                  </Typography>
+                ))
+              )}
+            </Box>
           </Paper>
         </Grid>
       </Grid>
@@ -420,6 +513,22 @@ const Visualization: React.FC = () => {
             <Box height={200}>
               <Bar data={barDataDuration} options={chartOptions} />
             </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12}>
+          <Paper sx={{ ...card, minHeight: 300 }}>
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+              Most Frequent Triggers
+            </Typography>
+            {barDataTriggers.labels.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No triggers logged yet — select them when saving a diary entry.
+              </Typography>
+            ) : (
+              <Box height={240}>
+                <Bar data={barDataTriggers} options={triggerChartOptions} />
+              </Box>
+            )}
           </Paper>
         </Grid>
         <Grid item xs={12}>
@@ -517,11 +626,11 @@ const Visualization: React.FC = () => {
       {selectedDate && (
         <Box mb={3}>
           <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-            Entries for {dayjs(selectedDate).format('MMMM D, YYYY')}
+            Entries for {formatLogDate(selectedDate, { year: 'numeric', month: 'long', day: 'numeric' })}
           </Typography>
           <Grid container spacing={2} alignItems="stretch">
             {entries
-              .filter((e) => dayjs(e.log_date).format('YYYY-MM-DD') === selectedDate)
+              .filter((e) => toDateKey(e.log_date) === selectedDate)
               .map((entry) => (
                 <Grid
                   item
@@ -548,15 +657,10 @@ const Visualization: React.FC = () => {
                       VM-PATHI Score: {entryVmPathiScore(entry)} / {VM_PATHI_MAX_SCORE}
                     </Typography>
                     <Box mt={1} display="flex" flexWrap="wrap" gap={1}>
-                      {(entry?.trigger?.potentialTrigger ? [entry.trigger.potentialTrigger] : [])
-                        .concat(entry?.trigger?.weather ? [entry.trigger.weather] : [])
-                        .concat(entry?.trigger?.food ? [entry.trigger.food] : [])
-                        .concat(entry?.trigger?.activity ? [entry.trigger.activity] : [])
-                        .filter(Boolean)
-                        .map((t) => (
-                          <Chip key={t as string} label={t as string} size="small" />
-                        ))}
-                      {(!entry.trigger || formatTrigger(entry.trigger) === '—') && (
+                      {triggerList(entry.trigger).map((t) => (
+                        <Chip key={t} label={triggerLabel(t)} size="small" />
+                      ))}
+                      {triggerList(entry.trigger).length === 0 && (
                         <Chip label="No triggers" size="small" variant="outlined" />
                       )}
                     </Box>
@@ -577,7 +681,7 @@ const Visualization: React.FC = () => {
       <Grid container spacing={2} alignItems="stretch">
         {entries
           .slice()
-          .sort((a, b) => +new Date(a.log_date) - +new Date(b.log_date))
+          .sort((a, b) => dateSortValue(b.log_date) - dateSortValue(a.log_date))
           .map((entry) => (
             <Grid
               item
@@ -597,22 +701,17 @@ const Visualization: React.FC = () => {
                 }}
               >
                 <Typography variant="subtitle1" fontWeight="bold">
-                  {new Date(entry.log_date).toLocaleDateString()} — {entry.intensity || '—'}
+                  {formatLogDate(entry.log_date)} — {entry.intensity || '—'}
                 </Typography>
                 <Typography variant="body2">Duration: {entry.duration || '—'} hrs</Typography>
                 <Typography variant="body2">
                   VM-PATHI Score: {entryVmPathiScore(entry)} / {VM_PATHI_MAX_SCORE}
                 </Typography>
                 <Box mt={1} display="flex" flexWrap="wrap" gap={1}>
-                  {(entry?.trigger?.potentialTrigger ? [entry.trigger.potentialTrigger] : [])
-                    .concat(entry?.trigger?.weather ? [entry.trigger.weather] : [])
-                    .concat(entry?.trigger?.food ? [entry.trigger.food] : [])
-                    .concat(entry?.trigger?.activity ? [entry.trigger.activity] : [])
-                    .filter(Boolean)
-                    .map((t) => (
-                      <Chip key={t as string} label={t as string} size="small" />
-                    ))}
-                  {(!entry.trigger || formatTrigger(entry.trigger) === '—') && (
+                  {triggerList(entry.trigger).map((t) => (
+                    <Chip key={t} label={triggerLabel(t)} size="small" />
+                  ))}
+                  {triggerList(entry.trigger).length === 0 && (
                     <Chip label="No triggers" size="small" variant="outlined" />
                   )}
                 </Box>

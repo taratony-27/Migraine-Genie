@@ -2,11 +2,28 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Avatar, Button, Paper, Grid,
   TextField, MenuItem, Snackbar, Alert, Container, Chip, Stack,
+  Divider, Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import EditIcon from '@mui/icons-material/Edit';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import LockResetIcon from '@mui/icons-material/LockReset';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import PersonIcon from '@mui/icons-material/Person';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { sendPasswordResetEmail, signOut } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import api from '../services/api';
+
+// created_at is a real timestamp (not a calendar-only date), so local
+// formatting is correct here.
+const formatJoined = (value?: string | null) => {
+  if (!value) return 'Unknown';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? 'Unknown'
+    : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
 
 const Account: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +35,8 @@ const Account: React.FC = () => {
 
   const [editMode, setEditMode] = useState(false);
   const [editedUser, setEditedUser] = useState<any>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [busyAction, setBusyAction] = useState<'save' | 'reset' | 'delete' | null>(null);
   const [alert, setAlert] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
@@ -28,29 +47,69 @@ const Account: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
+    // Show whatever is cached immediately, then replace it with live data
+    // (joined date, entry count, latest intensity) from the API.
     const stored = localStorage.getItem('user');
     if (stored) {
-      const parsed = JSON.parse(stored);
-      const fullUser = {
-        name: parsed.name,
-        email: parsed.email,
-        joined: parsed.joined || 'Unknown',
-        dateOfBirth: parsed.date_of_birth?.slice(0, 10) || '',
-        gender: parsed.gender || '',
-        totalEntries: parsed.totalEntries ?? 0,
-        recentIntensity: parsed.recentIntensity ?? 'N/A',
-      };
-      setUser(fullUser);
-      setEditedUser(fullUser);
+      try {
+        const parsed = JSON.parse(stored);
+        const cached = {
+          name: parsed.name,
+          email: parsed.email,
+          joined: formatJoined(parsed.created_at || parsed.joined),
+          dateOfBirth: parsed.date_of_birth?.slice(0, 10) || '',
+          gender: parsed.gender || '',
+          totalEntries: parsed.totalEntries ?? 0,
+          recentIntensity: parsed.recentIntensity ?? 'N/A',
+        };
+        setUser(cached);
+        setEditedUser(cached);
+      } catch {
+        // Corrupt cache — the fetch below is the source of truth anyway.
+      }
     }
+
+    const loadAccount = async () => {
+      try {
+        const { data } = await api.get('/api/users/me');
+        const profile = data?.user ?? {};
+        const stats = data?.stats ?? {};
+        const fresh = {
+          name: profile.name || '',
+          email: profile.email || '',
+          joined: formatJoined(stats.joined || profile.created_at),
+          dateOfBirth: profile.date_of_birth ? String(profile.date_of_birth).slice(0, 10) : '',
+          gender: profile.gender || '',
+          totalEntries: stats.totalEntries ?? 0,
+          recentIntensity: stats.recentIntensity || 'N/A',
+        };
+        if (!mounted) return;
+        setUser(fresh);
+        setEditedUser(fresh);
+        localStorage.setItem('user', JSON.stringify({
+          ...JSON.parse(localStorage.getItem('user') || '{}'),
+          ...profile,
+          totalEntries: fresh.totalEntries,
+          recentIntensity: fresh.recentIntensity,
+        }));
+      } catch (err) {
+        console.error('Failed to load account', err);
+      }
+    };
+
+    loadAccount();
+    return () => { mounted = false; };
   }, []);
 
   const handleEditChange = (field: string, value: string) =>
     setEditedUser({ ...editedUser, [field]: value });
 
   const handleSave = async () => {
+    setBusyAction('save');
     try {
-      const payload = { name: editedUser.name, date_of_birth: editedUser.dateOfBirth || null, gender: editedUser.gender || null };
+      const payload = { name: editedUser.name, dateOfBirth: editedUser.dateOfBirth || null, gender: editedUser.gender || null };
       const res = await api.put('/api/users/update', payload);
       const returned = (res?.data?.user ?? res?.data) || {};
       const updated = {
@@ -76,6 +135,51 @@ const Account: React.FC = () => {
       setEditMode(false);
     } catch (err: any) {
       setAlert({ open: true, message: err?.response?.data?.message || 'Update failed', severity: 'error' });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!user?.email) return;
+    setBusyAction('reset');
+    try {
+      await sendPasswordResetEmail(auth, user.email, {
+        url: window.location.origin,
+        handleCodeInApp: false,
+      });
+      setAlert({ open: true, message: `Password reset email sent to ${user.email}`, severity: 'success' });
+    } catch (err: any) {
+      setAlert({ open: true, message: err?.message || 'Password reset failed', severity: 'error' });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const clearSessionAndGoHome = async () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    delete api.defaults.headers.common.Authorization;
+    try {
+      await signOut(auth);
+    } catch {
+      // Local session cleanup above is enough for navigation state.
+    }
+    navigate('/');
+  };
+
+  const handleDeleteAccount = async () => {
+    setBusyAction('delete');
+    try {
+      await api.delete('/api/users/me');
+      await clearSessionAndGoHome();
+    } catch (err: any) {
+      setAlert({
+        open: true,
+        message: err?.response?.data?.message || 'Delete account failed',
+        severity: 'error',
+      });
+      setBusyAction(null);
     }
   };
 
@@ -91,17 +195,26 @@ const Account: React.FC = () => {
   const avatarFontSize = { xs: '1.8rem', sm: '2.2rem' };
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100dvh', py: { xs: 3, md: 6 } }}>
-      <Container maxWidth="sm">
+    <Box sx={{ bgcolor: '#eef3f8', minHeight: '100dvh', py: { xs: 3, md: 6 } }}>
+      <Container maxWidth="md">
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} mb={3}>
+          <Box>
+            <Typography variant="h4" fontWeight={900} color="text.primary">Account</Typography>
+            <Typography variant="body2" color="text.secondary">Manage your profile, login access, and account data.</Typography>
+          </Box>
+          <Button variant="contained" startIcon={<DashboardIcon />} onClick={() => navigate('/dashboard')} sx={{ borderRadius: 2, fontWeight: 800 }}>
+            Dashboard
+          </Button>
+        </Stack>
 
         {/* Profile card */}
-        <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden', mb: 3 }}>
+        <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', overflow: 'hidden', mb: 3, bgcolor: '#fff' }}>
 
           {/* Header strip */}
-          <Box sx={{ bgcolor: 'primary.main', height: 80 }} />
+          <Box sx={{ bgcolor: 'primary.main', height: 96 }} />
 
           {/* Avatar + name */}
-          <Box sx={{ px: 3, pb: 3, mt: '-40px' }}>
+          <Box sx={{ px: { xs: 2.5, sm: 4 }, pb: 4, mt: '-44px' }}>
             <Avatar
               sx={{
                 width: avatarSize, height: avatarSize,
@@ -126,7 +239,7 @@ const Account: React.FC = () => {
                 </Stack>
               ) : (
                 <>
-                  <Typography variant="h5" fontWeight={800} color="text.primary">{user.name}</Typography>
+                  <Typography variant="h5" fontWeight={900} color="text.primary">{user.name}</Typography>
                   <Typography variant="body2" color="text.secondary">{user.email}</Typography>
                   <Box display="flex" gap={1} mt={1} flexWrap="wrap">
                     {user.gender && <Chip label={user.gender} size="small" variant="outlined" />}
@@ -142,13 +255,13 @@ const Account: React.FC = () => {
         {/* Stats */}
         <Grid container spacing={2} mb={3}>
           <Grid item xs={6}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center', bgcolor: '#fff' }}>
               <Typography variant="h4" fontWeight={800} color="primary.main">{user.totalEntries}</Typography>
               <Typography variant="body2" color="text.secondary" mt={0.5}>Total Entries</Typography>
             </Paper>
           </Grid>
           <Grid item xs={6}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider', textAlign: 'center', bgcolor: '#fff' }}>
               <Typography variant="h4" fontWeight={800} color="primary.main">{user.recentIntensity}</Typography>
               <Typography variant="body2" color="text.secondary" mt={0.5}>Recent Intensity</Typography>
             </Paper>
@@ -156,23 +269,71 @@ const Account: React.FC = () => {
         </Grid>
 
         {/* Actions */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Paper elevation={0} sx={{ p: { xs: 2.5, sm: 3 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: '#fff', mb: 3 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
+            <PersonIcon color="primary" />
+            <Box>
+              <Typography variant="h6" fontWeight={900}>Profile</Typography>
+              <Typography variant="body2" color="text.secondary">Keep your personal details up to date.</Typography>
+            </Box>
+          </Stack>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           {editMode ? (
             <>
               <Button variant="outlined" fullWidth onClick={() => setEditMode(false)}>Cancel</Button>
-              <Button variant="contained" fullWidth onClick={handleSave}>Save Changes</Button>
+              <Button variant="contained" fullWidth onClick={handleSave} disabled={busyAction === 'save'}>
+                {busyAction === 'save' ? 'Saving...' : 'Save Changes'}
+              </Button>
             </>
           ) : (
-            <>
-              <Button variant="outlined" fullWidth startIcon={<EditIcon />} onClick={() => setEditMode(true)}>
-                Edit Profile
-              </Button>
-              <Button variant="contained" fullWidth startIcon={<DashboardIcon />} onClick={() => navigate('/dashboard')}>
-                Dashboard
-              </Button>
-            </>
+            <Button variant="outlined" fullWidth startIcon={<EditIcon />} onClick={() => setEditMode(true)}>
+              Edit Profile
+            </Button>
           )}
-        </Stack>
+          </Stack>
+        </Paper>
+
+        <Paper elevation={0} sx={{ p: { xs: 2.5, sm: 3 }, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: '#fff', mb: 3 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
+            <LockResetIcon color="primary" />
+            <Box>
+              <Typography variant="h6" fontWeight={900}>Login Access</Typography>
+              <Typography variant="body2" color="text.secondary">Send a password reset link to your account email.</Typography>
+            </Box>
+          </Stack>
+          <Button variant="contained" fullWidth startIcon={<LockResetIcon />} onClick={handleResetPassword} disabled={busyAction === 'reset'}>
+            {busyAction === 'reset' ? 'Sending...' : 'Send Password Reset Email'}
+          </Button>
+        </Paper>
+
+        <Paper elevation={0} sx={{ p: { xs: 2.5, sm: 3 }, borderRadius: 3, border: '1px solid', borderColor: 'error.light', bgcolor: '#fff' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
+            <WarningAmberIcon color="error" />
+            <Box>
+              <Typography variant="h6" fontWeight={900}>Danger Zone</Typography>
+              <Typography variant="body2" color="text.secondary">Permanently remove your account and saved migraine data.</Typography>
+            </Box>
+          </Stack>
+          <Divider sx={{ mb: 2 }} />
+          <Button variant="outlined" color="error" fullWidth startIcon={<DeleteOutlineIcon />} onClick={() => setDeleteOpen(true)}>
+            Delete Account
+          </Button>
+        </Paper>
+
+        <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle sx={{ fontWeight: 900 }}>Delete account?</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary">
+              This permanently deletes your profile and saved health records. This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button onClick={() => setDeleteOpen(false)} disabled={busyAction === 'delete'}>Cancel</Button>
+            <Button variant="contained" color="error" onClick={handleDeleteAccount} disabled={busyAction === 'delete'}>
+              {busyAction === 'delete' ? 'Deleting...' : 'Delete Account'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
 
       <Snackbar open={alert.open} autoHideDuration={3000} onClose={() => setAlert({ ...alert, open: false })} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>

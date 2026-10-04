@@ -1,10 +1,14 @@
 import axios from 'axios';
 import { auth } from './firebase';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE || 'http://localhost:5001';
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE ||
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5001'
+    : window.location.origin);
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL.replace(/\/$/, ''),
   headers: { 'Content-Type': 'application/json' },
 });
 
