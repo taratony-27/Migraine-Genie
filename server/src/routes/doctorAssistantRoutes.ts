@@ -28,6 +28,18 @@ function toNumber(val: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// log_date is stored as UTC midnight of the calendar day the user picked.
+// Interpolating the raw Date (`${date}`) renders it in the server's local
+// timezone via toString(), which can shift the day by one. Read the
+// calendar day straight from the UTC fields instead.
+function toDateKey(val: unknown): string {
+  if (!val) return "unknown";
+  const d = val instanceof Date ? val : new Date(val as any);
+  if (Number.isNaN(d.getTime())) return "unknown";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
+
 async function getAuthenticatedUserId(req: Request): Promise<number | undefined> {
   if (!req.user?.uid) return undefined;
 
@@ -70,6 +82,9 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
   let screenSum = 0;
   let screenCount = 0;
 
+  let vmPathiSum = 0;
+  let vmPathiCount = 0;
+
   const triggerCounts: Record<string, number> = {};
 
   for (const rawEntry of recentLogs) {
@@ -87,6 +102,12 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
       screenCount++;
     }
 
+    const vmPathiVal = toNumber(entry.vmPathiScore);
+    if (vmPathiVal !== null) {
+      vmPathiSum += vmPathiVal;
+      vmPathiCount++;
+    }
+
     const triggers = normalizeTriggers(entry.trigger);
     for (const t of triggers) {
       triggerCounts[t] = (triggerCounts[t] || 0) + 1;
@@ -102,6 +123,7 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
     totalLogs: recentLogs.length,
     avgSleepHours: sleepCount > 0 ? Number((sleepSum / sleepCount).toFixed(1)) : null,
     avgScreenTimeHours: screenCount > 0 ? Number((screenSum / screenCount).toFixed(1)) : null,
+    avgVmPathiScore: vmPathiCount > 0 ? Number((vmPathiSum / vmPathiCount).toFixed(1)) : null,
     commonTriggers,
   };
 }
@@ -178,7 +200,18 @@ SCOPE (VERY IMPORTANT):
   - Migraine triggers (sleep, stress, hormones, food, weather, screens, posture, etc.)
   - Migraine management strategies (lifestyle, routines, questions to ask a doctor)
   - Understanding migraine types, aura, chronic vs episodic migraine
-- If the user asks about ANY OTHER health issue:
+  - The user's VM-PATHI score — this app's own vestibular migraine symptom severity
+    index (25 items, each 0-4, summed to a 0-100 score; higher = more severe). It IS
+    an in-scope migraine metric. When asked about it, report the score(s) from
+    "USER DATA CONTEXT" / "RECENT DAILY LOGS" below and explain what the number means
+    (e.g. trend over time, which symptoms are driving it) — do not refuse this topic.
+    NEVER label the score (or its trend) as "low"/"high"/"mild"/"severe"/"good"/
+    "concerning"/etc. No validated severity bands were given to you, so any such
+    label is a guess, not a fact — a score being a small fraction of the 0-100 max
+    does NOT mean it is clinically "low". Just state the number(s), name which
+    symptom items are contributing most, and describe the trend (up/down/stable)
+    neutrally, without characterizing it as good or bad.
+- If the user asks about ANY OTHER health issue unrelated to migraines/vestibular migraine:
   - DO NOT answer that medical question.
   - Say you are designed only for migraine/headache topics and suggest a real clinician.
 
@@ -227,6 +260,7 @@ async function callDoctorModelWithFallback(
         `Total logs: ${stats.totalLogs}`,
         `Avg sleep hours: ${stats.avgSleepHours ?? "n/a"}`,
         `Avg screen time hours: ${stats.avgScreenTimeHours ?? "n/a"}`,
+        `Avg VM-PATHI score (0-100, vestibular migraine symptom severity index): ${stats.avgVmPathiScore ?? "n/a"}`,
         `Common triggers: ${JSON.stringify(stats.commonTriggers ?? [])}`,
       ].join("\n")
     : "No statistics available.";
@@ -239,11 +273,20 @@ async function callDoctorModelWithFallback(
       ].join("\n")
     : "No symptom statistics available.";
 
-  // Logs context includes symptom details per log day
+  // Logs context includes symptom details per log day. `stats`/`symptomStats`
+  // above already aggregate the user's ENTIRE history; this itemized list is
+  // capped to the most recent entries so smaller fallback models' context
+  // windows don't get blown out by a long logging history.
+  const MAX_DETAILED_LOGS = 45;
+  const totalLogDays = logs?.length ?? 0;
+  const detailedLogs = logs ? logs.slice(0, MAX_DETAILED_LOGS) : [];
   const logContextText =
-    logs && logs.length > 0
-      ? logs
-          .map((l) => {
+    detailedLogs.length > 0
+      ? [
+          totalLogDays > detailedLogs.length
+            ? `(Showing the ${detailedLogs.length} most recent of ${totalLogDays} total logged days. The aggregate stats above already reflect ALL ${totalLogDays} days.)`
+            : null,
+          ...detailedLogs.map((l) => {
             const triggerText = Array.isArray(l.triggers)
               ? l.triggers.join(", ")
               : String(l.triggers ?? "").trim();
@@ -265,9 +308,12 @@ async function callDoctorModelWithFallback(
 
             return `- Date: ${l.date}
   Sleep: ${l.sleep ?? "n/a"}h, Screen: ${l.screentime ?? "n/a"}h
+  VM-PATHI score: ${l.vmPathiScore ?? "n/a"}/100
   Triggers: ${triggerText || "none"}
   Symptoms: ${symptomsText}`;
-          })
+          }),
+        ]
+          .filter(Boolean)
           .join("\n")
       : "No recent logs found for this user.";
 
@@ -292,6 +338,14 @@ ${logContextText}
 INSTRUCTIONS:
 - If user asks about symptoms/history: summarize Symptoms FIRST (which symptoms, severity levels, durations, trends).
 - If user asks about triggers: summarize triggers and correlate with symptoms if possible.
+- If user asks about their VM-PATHI score: report the per-day score(s) and/or average from
+  the context above, describe the trend, and note which symptoms likely drove it. This is
+  an in-scope migraine metric — never refuse or say it's outside your scope. Do NOT call
+  the score "low"/"high"/"mild"/"severe" or otherwise judge its severity — just report it.
+- "USER DATA CONTEXT" (avg sleep/screen/VM-PATHI, common triggers) and "SYMPTOM DATA CONTEXT"
+  are computed from the user's ENTIRE logging history. "RECENT DAILY LOGS" below may only
+  itemize the most recent days (it will say so if truncated) — when summarizing overall
+  trends or averages, rely on the aggregate stats above, not just the itemized days.
 - Do NOT say you lack access to logs; they are provided above.`,
         },
         ...userMessages.slice(-10).map((m) => ({
@@ -360,10 +414,9 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
     const targetUserId = await getAuthenticatedUserId(req);
 
     if (targetUserId !== undefined) {
-      // [FIXED]: Sort by 'log_date' instead of 'created_at' to match your data schema
-      const recentLogs = await DailyInput.find({ user_id: targetUserId })
-        .sort({ log_date: -1 })
-        .limit(20);
+      // Fetch the user's ENTIRE logging history (not just a recent window) so
+      // averages/trends reflect all past entries, not a truncated slice of them.
+      const recentLogs = await DailyInput.find({ user_id: targetUserId }).sort({ log_date: -1 });
 
       if (recentLogs.length > 0) {
         stats = buildFeaturesFromLogs(recentLogs);
@@ -379,9 +432,7 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
           collectionSymptomDocs = await Symptom.find({
             user_id: targetUserId,
             log_id: { $in: logIds },
-          })
-            .sort({ created_at: -1 })
-            .limit(400);
+          }).sort({ created_at: -1 });
         }
 
         // Group separate collection-based symptoms by log_id
@@ -436,10 +487,11 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
             }
 
             return {
-              date: raw.log_date ?? "unknown",
+              date: toDateKey(raw.log_date),
               triggers: raw.trigger,
               sleep: raw.sleep,
               screentime: raw.screentime,
+              vmPathiScore: toNumber(raw.vmPathiScore),
               symptoms: symptomsList,
             };
           });

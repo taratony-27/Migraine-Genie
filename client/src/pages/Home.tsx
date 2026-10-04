@@ -5,10 +5,8 @@ import {
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import GroupsIcon from '@mui/icons-material/Groups';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import InsightsIcon from '@mui/icons-material/Insights';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate } from 'react-router-dom';
 import Auth from '../components/Auth';
@@ -36,13 +34,6 @@ const Home: React.FC = () => {
       border: '#ce93d8',
     },
     {
-      title: "Smart Alerts",
-      desc: "Get proactive warnings before a migraine hits based on your tracked data.",
-      icon: <NotificationsActiveIcon sx={{ fontSize: 48, color: '#e65100' }} />,
-      color: '#fff3e0',
-      border: '#ffcc80',
-    },
-    {
       title: "Wellness Program",
       desc: "Curated articles and videos to help you manage migraines holistically.",
       icon: <FavoriteIcon sx={{ fontSize: 48, color: '#c2185b' }} />,
@@ -55,13 +46,6 @@ const Home: React.FC = () => {
       icon: <AutoAwesomeIcon sx={{ fontSize: 48, color: '#00796b' }} />,
       color: '#e0f2f1',
       border: '#80cbc4',
-    },
-    {
-      title: "Community Support",
-      desc: "You're not alone. Connect with others navigating the same journey.",
-      icon: <GroupsIcon sx={{ fontSize: 48, color: '#2e7d32' }} />,
-      color: '#e8f5e9',
-      border: '#a5d6a7',
     },
   ];
 
@@ -234,7 +218,7 @@ const Home: React.FC = () => {
 
       {/* ── Features ── */}
       <Box sx={{ bgcolor: '#fff', py: { xs: 7, md: 10 }, px: 2 }}>
-        <Container maxWidth="lg">
+        <Container maxWidth="md">
           <Typography
             variant={isSmall ? 'h5' : 'h4'}
             fontWeight={800}
@@ -247,9 +231,9 @@ const Home: React.FC = () => {
           <Typography variant="body2" color="text.secondary" textAlign="center" mb={6}>
             One app. All the tools to understand and manage your migraines.
           </Typography>
-          <Grid container columnSpacing={4} rowSpacing={6} justifyContent="center">
+          <Grid container columnSpacing={4} rowSpacing={4} justifyContent="center">
             {featureData.map((feature, idx) => (
-              <Grid item xs={12} sm={6} md={4} key={idx}>
+              <Grid item xs={12} sm={6} key={idx}>
                 <Card
                   elevation={0}
                   sx={{

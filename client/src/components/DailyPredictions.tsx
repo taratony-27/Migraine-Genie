@@ -12,9 +12,10 @@ import {
   LinearProgress,
   useTheme
 } from '@mui/material';
-import { 
+import {
   Monitor,
-  Lightbulb
+  Lightbulb,
+  SelfImprovement
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -171,6 +172,38 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
           <Typography color="error" variant="body2" fontWeight="500">
             {errorMsg}
           </Typography>
+        </Paper>
+      )}
+
+      {predictions && (
+        (parseInt(predictions.forecast[0]?.risk as any) || 0) > 50 ||
+        predictions.triggers.some((t) => getRiskColorKey(t.risk) === 'error')
+      ) && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2.5,
+            mb: 3,
+            bgcolor: '#f3e8fd',
+            border: '1px solid #e1bee7',
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 1.5,
+          }}
+        >
+          <SelfImprovement sx={{ color: '#6a1b9a', mt: 0.25 }} />
+          <Box>
+            <Typography variant="subtitle1" fontWeight="700" color="#6a1b9a" gutterBottom>
+              A heads-up, not a guarantee
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+              Some of what's below is showing elevated risk — that's a pattern-based estimate, not a
+              certainty. Plenty of elevated-risk days pass without a migraine at all. It's a good day to
+              be a little extra kind to yourself: stay hydrated, ease up on screens, and keep an eye on
+              early symptoms. You're already ahead of it by tracking your data.
+            </Typography>
+          </Box>
         </Paper>
       )}
 

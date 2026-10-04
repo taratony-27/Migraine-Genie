@@ -462,9 +462,9 @@ const Visualization: React.FC = () => {
                   —
                 </Typography>
               ) : (
-                topTriggers.map(([slug, count]) => (
+                topTriggers.map(([slug]) => (
                   <Typography key={slug} variant="body2">
-                    {triggerLabel(slug)} ({count})
+                    {triggerLabel(slug)}
                   </Typography>
                 ))
               )}
