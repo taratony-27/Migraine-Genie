@@ -85,7 +85,7 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
     };
 
     initData();
-  }, [userId]);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps -- generatePredictions closes over this same userId
 
   const generatePredictions = async () => {
     if (!userId) return;

@@ -89,7 +89,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId: propUserId = null }) 
     };
 
     initializeAssistant();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally mount-only; reads activeUserId at that instant
 
   // 3. Auto-scroll
   useEffect(() => {
