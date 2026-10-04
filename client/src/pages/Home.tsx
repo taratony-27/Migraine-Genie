@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Box, Typography, Card, CardContent, Grid, Container,
-  useTheme, useMediaQuery, Button, Avatar, Divider, Chip
+  useTheme, useMediaQuery, Button, Chip
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -9,7 +9,6 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import InsightsIcon from '@mui/icons-material/Insights';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate } from 'react-router-dom';
 import Auth from '../components/Auth';
@@ -64,37 +63,6 @@ const Home: React.FC = () => {
       color: '#e8f5e9',
       border: '#a5d6a7',
     },
-  ];
-
-  const testimonialsData = [
-    {
-      name: "Sarah K.",
-      role: "Chronic migraine sufferer",
-      feedback: "Migraine Genie helped me finally understand my triggers. I went from 15 migraine days a month to 6. Absolute game-changer!",
-      initials: "SK",
-      color: '#1565c0',
-    },
-    {
-      name: "Jason M.",
-      role: "Software engineer",
-      feedback: "The personalized insights showed me that my screen time was directly correlated with my attacks. Simple but powerful.",
-      initials: "JM",
-      color: '#7b1fa2',
-    },
-    {
-      name: "Emma T.",
-      role: "Teacher",
-      feedback: "Simple, beautiful, and genuinely helpful. The AI assistant answers questions my doctor never had time for.",
-      initials: "ET",
-      color: '#c2185b',
-    },
-  ];
-
-  const stats = [
-    { value: '10k+', label: 'Active Users' },
-    { value: '500k+', label: 'Symptoms Logged' },
-    { value: '68%', label: 'Reduction in Migraine Days' },
-    { value: '4.9★', label: 'Average Rating' },
   ];
 
   const benefits = [
@@ -224,28 +192,6 @@ const Home: React.FC = () => {
         </Container>
       </Box>
 
-      {/* ── Stats bar ── */}
-      <Box sx={{ bgcolor: '#fff', py: { xs: 4, md: 5 }, boxShadow: '0 2px 12px rgba(21,101,192,0.08)' }}>
-        <Container maxWidth="lg">
-          <Grid container spacing={2} justifyContent="center">
-            {stats.map((s, i) => (
-              <Grid item xs={6} sm={3} key={i} sx={{ textAlign: 'center' }}>
-                <Typography
-                  variant={isSmall ? 'h5' : 'h4'}
-                  fontWeight={800}
-                  color="#1565c0"
-                >
-                  {s.value}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                  {s.label}
-                </Typography>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
-
       {/* ── About Us ── */}
       <Box sx={{ bgcolor: '#f0f7ff', py: { xs: 7, md: 10 }, px: 2 }}>
         <Container maxWidth="md">
@@ -325,71 +271,6 @@ const Home: React.FC = () => {
                     <Typography variant="body2" color="text.secondary" lineHeight={1.7}>
                       {feature.desc}
                     </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* ── Testimonials ── */}
-      <Box sx={{ bgcolor: '#f0f7ff', py: { xs: 7, md: 10 }, px: 2 }}>
-        <Container maxWidth="lg">
-          <Typography
-            variant={isSmall ? 'h5' : 'h4'}
-            fontWeight={800}
-            color="#0d47a1"
-            textAlign="center"
-            mb={1}
-          >
-            Real Stories
-          </Typography>
-          <Typography variant="body2" color="text.secondary" textAlign="center" mb={6}>
-            From people who've taken back control of their lives.
-          </Typography>
-          <Grid container spacing={3} justifyContent="center">
-            {testimonialsData.map((t, idx) => (
-              <Grid item xs={12} sm={6} md={4} key={idx}>
-                <Card
-                  elevation={0}
-                  sx={{
-                    border: '1.5px solid #bbdefb',
-                    borderRadius: 4,
-                    p: { xs: 2.5, md: 3.5 },
-                    height: '100%',
-                    bgcolor: '#fff',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <CardContent sx={{ p: 0, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                    <FormatQuoteIcon sx={{ fontSize: 32, color: '#bbdefb', mb: 1 }} />
-                    <Typography
-                      variant="body1"
-                      color="text.secondary"
-                      fontStyle="italic"
-                      lineHeight={1.8}
-                      flexGrow={1}
-                      mb={3}
-                      sx={{ fontSize: { xs: '0.9rem', md: '0.95rem' } }}
-                    >
-                      {t.feedback}
-                    </Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    <Box display="flex" alignItems="center" gap={1.5}>
-                      <Avatar sx={{ bgcolor: t.color, width: 36, height: 36, fontSize: '0.8rem', fontWeight: 700 }}>
-                        {t.initials}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="subtitle2" fontWeight={700} color="#0d47a1">
-                          {t.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {t.role}
-                        </Typography>
-                      </Box>
-                    </Box>
                   </CardContent>
                 </Card>
               </Grid>

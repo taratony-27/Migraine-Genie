@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, TextField, Typography, Button, MenuItem, FormControl, FormLabel,
-  Slider, Switch, FormControlLabel, Radio, RadioGroup,
+  FormControlLabel, Radio, RadioGroup,
   Snackbar, Alert, Grid, Paper, Chip, IconButton, Tooltip, Stack, Divider,
 } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -15,49 +15,13 @@ import GrainIcon from '@mui/icons-material/Grain';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../services/api';
+import { symptomInputs, symptomSections, problemOptions, severityLabels, VM_PATHI_MAX_SCORE, computeVmPathiScore } from '../constants/vmPathi';
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
-
-const problemOptions = [
-  { label: "No problem", value: 0 },
-  { label: "Mild problem", value: 1 },
-  { label: "Moderate problem", value: 2 },
-  { label: "Severe problem", value: 3 }
-];
-
-const symptomInputs = [
-  { key: 'imbalance', label: 'Imbalance', type: 'slider' },
-  { key: 'spinningSensation', label: 'Spinning sensation', type: 'slider' },
-  { key: 'headBodyDizziness', label: 'Dizziness with head or body movement', type: 'radio' },
-  { key: 'visualSceneDizziness', label: 'Dizziness with busy visual scenes', type: 'radio' },
-  { key: 'motionSensitivity', label: 'Motion sensitivity/motion sickness', type: 'radio' },
-  { key: 'soundDiscomfort', label: 'Discomfort with loud sounds', type: 'dropdown' },
-  { key: 'lightsDiscomfort', label: 'Discomfort with bright lights', type: 'dropdown' },
-  { key: 'lightheadedness', label: 'Lightheadedness', type: 'radio' },
-  { key: 'earPressure', label: 'Ear pressure or ear fullness', type: 'radio' },
-  { key: 'nausea', label: 'Nausea', type: 'radio' },
-  { key: 'fatigue', label: 'Fatigue', type: 'slider' },
-  { key: 'headPressure', label: 'Head pressure', type: 'slider' },
-  { key: 'headaches', label: 'Headaches', type: 'slider' },
-  { key: 'memoryDifficulty', label: 'Trouble remembering things', type: 'dropdown' },
-  { key: 'movementSensation', label: 'Sensation of movement when not moving', type: 'dropdown' },
-  { key: 'walkingDifficulty', label: 'Difficulty walking around', type: 'slider' },
-  { key: 'stairsDifficulty', label: 'Difficulty using stairs', type: 'dropdown' },
-  { key: 'reducedProductivity', label: 'Reduced productivity at work', type: 'dropdown' },
-  { key: 'concentratingDifficulty', label: 'Difficulty concentrating', type: 'dropdown' },
-  { key: 'stress', label: 'Stress', type: 'slider' },
-  { key: 'sadness', label: 'Sadness', type: 'slider' },
-  { key: 'anxiety', label: 'Anxiety', type: 'dropdown' },
-  { key: 'abnormalLifeFear', label: "Fear that life won't be normal again", type: 'dropdown' },
-  { key: 'fallingFear', label: 'Fear of falling', type: 'switch' },
-  { key: 'socialSituationAvoidance', label: 'Avoiding social situations', type: 'switch' },
-];
 
 type DailyLogProps = {
   userId?: number | string | null;
 };
-
-const severityLabels = ['No', 'Mild', 'Moderate', 'Severe'];
 
 const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
   const currentUserId =
@@ -94,6 +58,11 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     ...Object.fromEntries(symptomInputs.map(({ key }) => [key, ''])),
     notes: '',
   });
+
+  const vmPathiScore = useMemo(
+    () => symptomInputs.reduce((sum, { key }) => sum + (Number(entry[key]) || 0), 0),
+    [entry]
+  );
 
   // ====== Toast state & helper ======
   const [toast, setToast] = useState<{open: boolean; message: string; severity: 'success' | 'error' | 'warning' | 'info'}>({
@@ -137,14 +106,11 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
     } = src;
 
     const symptoms: Record<string, string> = {};
-    for (const { key, type } of symptomInputs) {
-      const raw = symptomsRaw[key];
-      if (type === 'switch') {
-        symptoms[key] = Number(raw) === 1 ? 'Yes' : 'No';
-      } else {
-        const idx = Number(raw) || 0;
-        symptoms[key] = severityLabels[idx] ?? 'No';
-      }
+    let vmPathiScore = 0;
+    for (const { key } of symptomInputs) {
+      const idx = Number(symptomsRaw[key]) || 0;
+      symptoms[key] = severityLabels[idx] ?? 'No';
+      vmPathiScore += idx;
     }
 
     return {
@@ -162,6 +128,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         activity: activity || (activityTriggers.length ? activityTriggers.join(', ') : null),
       },
       symptoms,
+      vmPathiScore,
       notes: notes || null,
     };
   };
@@ -390,6 +357,9 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           ) : (
             <Typography variant="body2">Symptoms: None</Typography>
           )}
+            <Typography variant="body2">
+              VM-PATHI Score: {typeof log.vmPathiScore === 'number' ? log.vmPathiScore : computeVmPathiScore(log.symptoms)} / {VM_PATHI_MAX_SCORE}
+            </Typography>
             <Typography variant="body2">Notes: {log.notes || '-'}</Typography>
               </Box>
             </React.Fragment>          
@@ -518,11 +488,11 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/pad.png"
-          alt="Hormonal Changes"
+          alt="Period"
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
-            Hormonal Changes
+            Period
           </Typography>
         </Box>
       </ToggleButton>
@@ -1108,95 +1078,48 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         </Box>
       </ToggleButton>
     </ToggleButtonGroup>
-          {symptomInputs.map(({ key, label, type }) => (
-            <FormControl key={key} fullWidth>
-              <FormLabel>{label}</FormLabel>
-              {type === 'slider' ? (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',    // Align items vertically
-                    width: '100%',           // Ensure the container takes full width
-                    padding: { xs: 1, md: 2 }, // Add padding for phones and larger screens
-                  }}
-                >
-                <Slider
-                  name={key}
-                  value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
-                  onChange={(_, val) => {
-                    const numericValue = Number(val);
-                    setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
-                  }}
-                  step={1}
-                  min={0}
-                  max={3}
-                  marks={[
-                    { value: 0, label: 'No' },
-                    { value: 1, label: 'Mild' },
-                    { value: 2, label: 'Moderate' },
-                    { value: 3, label: 'Severe' },
-                  ]}
-                  sx={{
-                    width: { xs: '90%', md: '90%' }, // Shrink slider width for phones
-                    height: { xs: 4, md: 8 },        // Adjust slider height for phones
-                  }}
-                />
-                </Box>
-              ) : type === 'dropdown' ? (
-                <TextField
-                  select
-                  name={key}
-                  value={entry[key]}
-                  onChange={handleChange}
-                >
-                  {problemOptions.map(opt => (
-                    <MenuItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </MenuItem>
-                  ))}
+          <Typography variant="h5" fontWeight="bold" sx={{ mt: 2 }}>
+            Symptoms
+          </Typography>
 
-                </TextField>
-              ) : type === 'radio' ? (
-                <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: 1 }}>
-                <RadioGroup
-                  name={key}
-                  value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
-                  onChange={(_, val) => {
-                    const numericValue = Number(val);
-                    setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
-                  }}
-                  sx={{
-                  flexDirection: { xs: 'column', sm: 'row', lg: 'row' } // Vertical for phones, horizontal for laptops
-                  }}
-                >
-                  {problemOptions.map(opt => (
-                  <FormControlLabel key={opt.value} value={opt.value} control={<Radio />} label={opt.label} />
-                  ))}
-                </RadioGroup>
-                </Box>
-              ) : type === 'switch' ? (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={entry[key] === 1}
-                      onChange={e =>
-                        setEntry((prev: typeof entry) => ({
-                          ...prev,
-                          [key]: e.target.checked ? 1 : 0
-                        }))
-                      }
+          {symptomSections.map((section, sectionIdx) => (
+            <Paper key={sectionIdx} sx={{ ...cardSx, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {section.map(({ key, label }) => (
+                <FormControl key={key} fullWidth>
+                  <FormLabel>{label}</FormLabel>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <RadioGroup
                       name={key}
-                    />
-                  }
-                  label={entry[key] === 1 ? 'Yes' : 'No'}
-                />
-              ) : null}
-            </FormControl>
+                      value={Number.isFinite(Number(entry[key])) ? Number(entry[key]) : 0} // [MODIFIED] keep controlled numeric
+                      onChange={(_, val) => {
+                        const numericValue = Number(val);
+                        setEntry((prev: typeof entry) => ({ ...prev, [key]: numericValue }));
+                      }}
+                      sx={{
+                        flexDirection: { xs: 'column', sm: 'row', lg: 'row' } // Vertical for phones, horizontal for laptops
+                      }}
+                    >
+                      {problemOptions.map(opt => (
+                        <FormControlLabel key={opt.value} value={opt.value} control={<Radio />} label={opt.label} />
+                      ))}
+                    </RadioGroup>
+                  </Box>
+                </FormControl>
+              ))}
+            </Paper>
           ))}
+
+          <Paper sx={{ ...cardSx, textAlign: 'center' }}>
+            <Typography variant="subtitle1" fontWeight="bold">
+              VM-PATHI Score
+            </Typography>
+            <Typography variant="h4" color="#1565c0">
+              {vmPathiScore} / {VM_PATHI_MAX_SCORE}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Sum of all symptom severities above (Imbalance through Fatigue), 0–4 each.
+            </Typography>
+          </Paper>
 
           <TextField
             label="Additional Notes"

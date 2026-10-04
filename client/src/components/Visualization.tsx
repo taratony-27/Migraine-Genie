@@ -26,6 +26,7 @@ import {
 
 import dayjs from 'dayjs';
 import api from '../services/api';
+import { computeVmPathiScore, VM_PATHI_MAX_SCORE } from '../constants/vmPathi';
 
 ChartJS.register(
   CategoryScale,
@@ -53,9 +54,11 @@ type Entry = {
     | null;
   notes?: string | null;
   symptoms?: Record<string, string | number | null>;
+  vmPathiScore?: number;
 };
 
-const severityMap: Record<string, number> = { No: 0, Mild: 1, Moderate: 2, Severe: 3 };
+const entryVmPathiScore = (entry: Entry): number =>
+  typeof entry.vmPathiScore === 'number' ? entry.vmPathiScore : computeVmPathiScore(entry.symptoms);
 
 const formatTrigger = (t: Entry['trigger']) => {
   if (!t || typeof t !== 'object') return '—';
@@ -64,11 +67,11 @@ const formatTrigger = (t: Entry['trigger']) => {
   return parts.length ? parts.join(' · ') : '—';
 };
 
-const getHeatColor = (sum: number) => {
-  if (sum === 0) return '#E0E0E0';
-  if (sum <= 10) return '#D7EAF9';
-  if (sum <= 20) return '#A9D7EF';
-  if (sum <= 35) return '#53B5E9';
+const getHeatColor = (score: number) => {
+  if (score === 0) return '#E0E0E0';
+  if (score <= 25) return '#D7EAF9';
+  if (score <= 50) return '#A9D7EF';
+  if (score <= 75) return '#53B5E9';
   return '#0D8FD1';
 };
 
@@ -228,18 +231,15 @@ const Visualization: React.FC = () => {
       const key = dayjs(entry.log_date).format('YYYY-MM-DD');
       const symptoms = entry.symptoms || {};
 
-      let total = 0;
       Object.entries(symptoms).forEach(([name, val]) => {
         const valStr = String(val ?? '').toLowerCase();
-        const numeric = typeof val === 'number' ? val : severityMap[String(val)] ?? 0;
-        total += numeric;
-
-        if (val !== null && val !== '' && valStr !== 'no' && numeric !== 0) {
+        if (val !== null && val !== '' && valStr !== 'no') {
           symptomCounts[name] = (symptomCounts[name] || 0) + 1;
         }
       });
 
-      sevByDate[key] = (sevByDate[key] || 0) + total;
+      const score = typeof entry.vmPathiScore === 'number' ? entry.vmPathiScore : computeVmPathiScore(symptoms);
+      sevByDate[key] = (sevByDate[key] || 0) + score;
     });
 
     const topSymptoms = Object.entries(symptomCounts)
@@ -387,9 +387,9 @@ const Visualization: React.FC = () => {
                       —
                     </Typography>
                   ) : (
-                    top3.map(([symptom, count]) => (
+                    top3.map(([symptom]) => (
                       <Typography key={symptom} variant="body2">
-                        {symptom} ({count})
+                        {symptom}
                       </Typography>
                     ))
                   )}
@@ -436,7 +436,7 @@ const Visualization: React.FC = () => {
 
       {/* Calendar Heatmap */}
       <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Symptom Intensity Calendar Heatmap
+        VM-PATHI Score Calendar Heatmap
       </Typography>
       <Paper sx={{ ...card, mb: 3 }}>
         <Box display="flex" justifyContent="center" alignItems="center" mb={2} gap={2}>
@@ -469,7 +469,7 @@ const Visualization: React.FC = () => {
             const isSelected = selectedDate === dateStr;
             return (
               <Grid item xs={12 / 7 as any} key={dateStr}>
-                <Tooltip title={`Severity Sum: ${severity}`} arrow>
+                <Tooltip title={`VM-PATHI Score: ${severity} / ${VM_PATHI_MAX_SCORE}`} arrow>
                   <Paper
                     onClick={() => setSelectedDate(dateStr)}
                     sx={{
@@ -498,11 +498,11 @@ const Visualization: React.FC = () => {
         <Divider sx={{ my: 2 }} />
         <Grid container spacing={2}>
           {[
-            { c: '#E0E0E0', t: 'No Severity' },
-            { c: '#D7EAF9', t: 'Mild (1–10)' },
-            { c: '#A9D7EF', t: 'Moderate (11–20)' },
-            { c: '#53B5E9', t: 'Severe (21–35)' },
-            { c: '#0D8FD1', t: 'Extreme (36+)' },
+            { c: '#E0E0E0', t: 'No Severity (0)' },
+            { c: '#D7EAF9', t: 'Mild (1–25)' },
+            { c: '#A9D7EF', t: 'Moderate (26–50)' },
+            { c: '#53B5E9', t: 'Severe (51–75)' },
+            { c: '#0D8FD1', t: 'Extreme (76–100)' },
           ].map((l) => (
             <Grid item key={l.t}>
               <Box display="flex" alignItems="center" gap={1}>
@@ -544,6 +544,9 @@ const Visualization: React.FC = () => {
                       Intensity: {entry.intensity || '—'}
                     </Typography>
                     <Typography variant="body2">Duration: {entry.duration || '—'} hrs</Typography>
+                    <Typography variant="body2">
+                      VM-PATHI Score: {entryVmPathiScore(entry)} / {VM_PATHI_MAX_SCORE}
+                    </Typography>
                     <Box mt={1} display="flex" flexWrap="wrap" gap={1}>
                       {(entry?.trigger?.potentialTrigger ? [entry.trigger.potentialTrigger] : [])
                         .concat(entry?.trigger?.weather ? [entry.trigger.weather] : [])
@@ -597,6 +600,9 @@ const Visualization: React.FC = () => {
                   {new Date(entry.log_date).toLocaleDateString()} — {entry.intensity || '—'}
                 </Typography>
                 <Typography variant="body2">Duration: {entry.duration || '—'} hrs</Typography>
+                <Typography variant="body2">
+                  VM-PATHI Score: {entryVmPathiScore(entry)} / {VM_PATHI_MAX_SCORE}
+                </Typography>
                 <Box mt={1} display="flex" flexWrap="wrap" gap={1}>
                   {(entry?.trigger?.potentialTrigger ? [entry.trigger.potentialTrigger] : [])
                     .concat(entry?.trigger?.weather ? [entry.trigger.weather] : [])

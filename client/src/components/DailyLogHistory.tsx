@@ -15,6 +15,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import api from '../services/api';
+import { computeVmPathiScore, VM_PATHI_MAX_SCORE } from '../constants/vmPathi';
 
 type Entry = {
   _id?: string;
@@ -27,6 +28,7 @@ type Entry = {
   trigger?: any; // can be string or object
   notes?: string | null;
   symptoms?: Record<string, string>;
+  vmPathiScore?: number;
 };
 
 const intensityColor = (level?: string) => {
@@ -209,6 +211,13 @@ const DailyLogHistory: React.FC = () => {
                         size="small"
                         variant="outlined"
                         label={`Screen: ${entry.screentime ?? '—'}h`}
+                      />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={`VM-PATHI: ${
+                          typeof entry.vmPathiScore === 'number' ? entry.vmPathiScore : computeVmPathiScore(entry.symptoms)
+                        }/${VM_PATHI_MAX_SCORE}`}
                       />
                     </Stack>
                   }

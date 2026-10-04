@@ -20,6 +20,7 @@ const DailyInputSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
+  vmPathiScore: { type: Number },
   created_at: { type: Date, default: Date.now }
 }, { collection: 'dailyInputs' });
 
