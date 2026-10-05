@@ -80,7 +80,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId: propUserId = null }) 
           const response = await api.get('/api/daily-inputs', {
             params: { userId: currentId },
           });
-          console.log('[AIAssistant] Context logs loaded:', response.data.length);
           setDailyLogs(response.data);
         } catch (error) {
           console.error('[AIAssistant] Failed to fetch daily logs:', error);
@@ -114,9 +113,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId: propUserId = null }) 
       const res = await api.post<{ reply: string; modelUsed: string }>(
         '/api/assistant/doctor-chat',
         {
-          userId: activeUserId ?? undefined,
-          messages: nextMessages,
-          dailyLogs: dailyLogs, // Pass the logs we fetched earlier
+          // The server loads this user's logs itself from the sign-in token,
+          // and only reads the last 10 turns.
+          messages: nextMessages.slice(-10),
         }
       );
 

@@ -158,8 +158,11 @@ export const createDailyInput = async (req: Request, res: Response): Promise<voi
       user_id: userId,
       log_id: Date.now() * 1000 + Math.floor(Math.random() * 1000),
     };
-    // Default to "today" if no date was sent
-    if (!payload.log_date) payload.log_date = startOfDay();
+    // The server can't know the user's local "today", so the date is required.
+    if (!payload.log_date) {
+      res.status(400).json({ message: 'Date is required.' });
+      return;
+    }
 
     const newLog = new DailyInput(payload);
     await newLog.save();

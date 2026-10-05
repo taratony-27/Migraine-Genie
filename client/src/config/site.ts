@@ -8,7 +8,7 @@ export const SITE = {
   url: 'https://migraine-genie.com',
   tagline: 'Track your migraines. Understand your triggers.',
   description:
-    'Migraine Genie is a free migraine diary that turns your daily logs into clear patterns — track symptoms, sleep and triggers, then see what actually sets your migraines off.',
+    'A free migraine diary that turns your daily logs into clear patterns. Track symptoms, sleep and triggers, and see what sets your migraines off.',
   supportEmail: 'support@migraine-genie.com',
   themeColor: '#0d47a1',
   twitterHandle: '', // e.g. '@migrainegenie' — omitted from tags while empty

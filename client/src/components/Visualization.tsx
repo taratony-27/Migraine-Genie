@@ -26,7 +26,7 @@ import {
 
 import dayjs from 'dayjs';
 import api from '../services/api';
-import { computeVmPathiScore, VM_PATHI_MAX_SCORE } from '../constants/vmPathi';
+import { computeVmPathiScore, VM_PATHI_MAX_SCORE, symptomLabel } from '../constants/vmPathi';
 import { dateSortValue, formatLogDate, toDateKey } from '../utils/date';
 
 ChartJS.register(
@@ -41,6 +41,7 @@ ChartJS.register(
 );
 
 type Entry = {
+  _id?: string;
   log_id?: number;
   log_date: string | Date;
   intensity?: 'Mild' | 'Moderate' | 'Severe' | string;
@@ -135,6 +136,18 @@ const card = {
 
 const ENTRY_MIN_HEIGHT = 220;
 
+// Text alternative for a chart: "Title: label value, label value…" (screen readers can't read a canvas).
+const chartSummary = (title: string, data: { labels?: unknown[]; datasets: { data: unknown[] }[] }) => {
+  const labels = data.labels ?? [];
+  const values = data.datasets[0]?.data ?? [];
+  if (labels.length === 0) return `${title}: no data yet`;
+  const parts = labels.slice(0, 12).map((l, i) => `${String(l)} ${String(values[i] ?? 0)}`);
+  return `${title}: ${parts.join(', ')}${labels.length > 12 ? ', and more' : ''}`;
+};
+
+// Shows 0 as 0; only a missing value becomes a dash.
+const showValue = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
+
 const severityChip = (v: string | number | null | undefined) => {
   const s = typeof v === 'number' ? v : String(v || '').trim();
   const norm =
@@ -185,7 +198,7 @@ const SymptomPills: React.FC<{ symptoms?: Record<string, string | number | null>
           return (
             <Chip
               key={key}
-              label={`${key}: ${v}`}
+              label={`${symptomLabel(key)}: ${v}`}
               size="small"
               sx={{
                 bgcolor: bg,
@@ -488,7 +501,7 @@ const Visualization: React.FC = () => {
               ) : (
                 topSymptoms.slice(0, 3).map(([symptom]) => (
                   <Typography key={symptom} variant="body2">
-                    {symptom}
+                    {symptomLabel(symptom)}
                   </Typography>
                 ))
               )}
@@ -504,7 +517,7 @@ const Visualization: React.FC = () => {
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
               Frequency by Intensity
             </Typography>
-            <Box height={200}>
+            <Box height={200} role="img" aria-label={chartSummary('Entries by intensity', barDataFrequency)}>
               <Bar data={barDataFrequency} options={chartOptions} />
             </Box>
           </Paper>
@@ -514,7 +527,7 @@ const Visualization: React.FC = () => {
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
               Total Duration by Intensity
             </Typography>
-            <Box height={200}>
+            <Box height={200} role="img" aria-label={chartSummary('Total hours by intensity', barDataDuration)}>
               <Bar data={barDataDuration} options={chartOptions} />
             </Box>
           </Paper>
@@ -529,7 +542,7 @@ const Visualization: React.FC = () => {
                 No triggers logged yet — select them when saving a diary entry.
               </Typography>
             ) : (
-              <Box height={240}>
+              <Box height={240} role="img" aria-label={chartSummary('Most frequent triggers', barDataTriggers)}>
                 <Bar data={barDataTriggers} options={triggerChartOptions} />
               </Box>
             )}
@@ -540,7 +553,7 @@ const Visualization: React.FC = () => {
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
               Daily Duration Over Time
             </Typography>
-            <Box height={200}>
+            <Box height={200} role="img" aria-label={chartSummary('Hours of migraine per day', lineData)}>
               <Line data={lineData} options={chartOptions} />
             </Box>
           </Paper>
@@ -584,8 +597,19 @@ const Visualization: React.FC = () => {
               <Grid item xs={12 / 7 as any} key={dateStr}>
                 <Tooltip title={`VM-PATHI Score: ${severity} / ${VM_PATHI_MAX_SCORE}`} arrow>
                   <Paper
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
+                    aria-label={`${day.format('MMMM D')}: VM-PATHI score ${severity} of ${VM_PATHI_MAX_SCORE}`}
                     onClick={() => setSelectedDate(dateStr)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedDate(dateStr);
+                      }
+                    }}
                     sx={{
+                      '&:focus-visible': { outline: '2px solid #0d47a1', outlineOffset: 2 },
                       backgroundColor: getHeatColor(severity),
                       height: { xs: 36, sm: 44 },
                       display: 'flex',
@@ -635,12 +659,12 @@ const Visualization: React.FC = () => {
           <Grid container spacing={2} alignItems="stretch">
             {entries
               .filter((e) => toDateKey(e.log_date) === selectedDate)
-              .map((entry) => (
+              .map((entry, i) => (
                 <Grid
                   item
                   xs={12}
                   md={6}
-                  key={entry.log_id ?? `${entry.log_date}-${Math.random()}`}
+                  key={entry._id ?? entry.log_id ?? `${entry.log_date}-${i}`}
                   sx={{ display: 'flex' }}
                 >
                   <Paper
@@ -656,7 +680,7 @@ const Visualization: React.FC = () => {
                     <Typography variant="subtitle2" fontWeight="bold">
                       Intensity: {entry.intensity || '—'}
                     </Typography>
-                    <Typography variant="body2">Duration: {entry.duration || '—'} hrs</Typography>
+                    <Typography variant="body2">Duration: {showValue(entry.duration)} hrs</Typography>
                     <Typography variant="body2">
                       VM-PATHI Score: {entryVmPathiScore(entry)} / {VM_PATHI_MAX_SCORE}
                     </Typography>
@@ -686,12 +710,12 @@ const Visualization: React.FC = () => {
         {entries
           .slice()
           .sort((a, b) => dateSortValue(b.log_date) - dateSortValue(a.log_date))
-          .map((entry) => (
+          .map((entry, i) => (
             <Grid
               item
               xs={12}
               md={6}
-              key={entry.log_id ?? `${entry.log_date}-${Math.random()}`}
+              key={entry._id ?? entry.log_id ?? `${entry.log_date}-${i}`}
               sx={{ display: 'flex' }}
             >
               <Paper
@@ -707,7 +731,7 @@ const Visualization: React.FC = () => {
                 <Typography variant="subtitle1" fontWeight="bold">
                   {formatLogDate(entry.log_date)} — {entry.intensity || '—'}
                 </Typography>
-                <Typography variant="body2">Duration: {entry.duration || '—'} hrs</Typography>
+                <Typography variant="body2">Duration: {showValue(entry.duration)} hrs</Typography>
                 <Typography variant="body2">
                   VM-PATHI Score: {entryVmPathiScore(entry)} / {VM_PATHI_MAX_SCORE}
                 </Typography>

@@ -64,6 +64,13 @@ export const symptomSections: SymptomInput[][] = [
 
 export const VM_PATHI_MAX_SCORE = symptomInputs.length * 4; // 100
 
+const SYMPTOM_LABELS: Record<string, string> = Object.fromEntries(symptomInputs.map((s) => [s.key, s.label]));
+
+/** Readable name for a stored symptom key: "soundDiscomfort" -> "Discomfort with loud sounds". */
+export const symptomLabel = (key: string): string =>
+  SYMPTOM_LABELS[key] ??
+  key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase());
+
 export function computeVmPathiScore(symptoms: Record<string, unknown> | null | undefined): number {
   if (!symptoms) return 0;
   return symptomInputs.reduce((sum, { key }) => {

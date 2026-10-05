@@ -4,7 +4,7 @@ import {
   Menu, MenuItem, Avatar, Box, useScrollTrigger
 } from '@mui/material';
 import { SITE } from '../config/site';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { endSession } from '../services/session';
 
 const Header: React.FC = () => {
@@ -56,10 +56,11 @@ const Header: React.FC = () => {
       <Toolbar sx={{ justifyContent: 'space-between', minHeight: { xs: 56, sm: 64 } }}>
         <Typography
           variant="h6"
+          component={RouterLink}
+          to="/"
           fontWeight={800}
-          onClick={() => navigate('/')}
           sx={{
-            cursor: 'pointer',
+            textDecoration: 'none',
             userSelect: 'none',
             color: isHome && !elevated ? '#fff' : 'primary.main',
             letterSpacing: '-0.3px',
@@ -80,7 +81,7 @@ const Header: React.FC = () => {
                 Dashboard
               </Button>
             )}
-            <IconButton onClick={handleMenuOpen} size="small">
+            <IconButton onClick={handleMenuOpen} size="small" aria-label="Account menu">
               <Avatar
                 sx={{
                   width: 34,

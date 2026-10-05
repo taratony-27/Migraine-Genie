@@ -148,7 +148,7 @@ const Auth: React.FC<{ mode?: AuthMode; onModeChange?: (mode: AuthMode) => void 
           border: "2px solid #1565c0",
         }}
       >
-        <Typography variant="h5" fontWeight="bold" gutterBottom color="#1565c0" textAlign="center">
+        <Typography variant="h5" component="h2" fontWeight="bold" gutterBottom color="#1565c0" textAlign="center">
           {isLogin ? "Welcome back" : "Create account"}
         </Typography>
 
@@ -211,6 +211,8 @@ const Auth: React.FC<{ mode?: AuthMode; onModeChange?: (mode: AuthMode) => void 
           startIcon={<GoogleIcon />}
           onClick={handleGoogle} disabled={loading}
           sx={{ borderRadius: 2, fontWeight: 600, borderColor: "#ddd", color: "text.primary",
+            // keep the label on one line next to the icon on narrow phones
+            whiteSpace: "nowrap", fontSize: { xs: "0.8rem", sm: "0.9375rem" },
             "&:hover": { borderColor: "#1565c0", bgcolor: "#f5f8ff" } }}
         >
           Continue with Google

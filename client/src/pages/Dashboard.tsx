@@ -163,6 +163,8 @@ const Dashboard: React.FC = () => {
                 />
                 <Box
                   display="flex"
+                  role="tablist"
+                  aria-label="Dashboard sections"
                   sx={{ position: "relative", zIndex: 2 }}
                 >
                   {tabs.map((tab) => {
@@ -171,7 +173,17 @@ const Dashboard: React.FC = () => {
                       <Box
                         key={tab.label}
                         flex={1}
+                        role="tab"
+                        tabIndex={0}
+                        aria-selected={isActive}
+                        aria-label={tab.label}
                         onClick={() => setActiveTab(tab.label)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setActiveTab(tab.label);
+                          }
+                        }}
                         sx={{
                           textAlign: "center",
                           py: 0.9,
@@ -185,6 +197,7 @@ const Dashboard: React.FC = () => {
                           userSelect: "none",
                           transition: "color 0.2s",
                           "&:hover": { color: isActive ? "#fff" : "primary.main" },
+                          "&:focus-visible": { outline: "2px solid", outlineColor: "primary.dark", outlineOffset: 2 },
                         }}
                       >
                         {isMedium ? tab.short : tab.label}

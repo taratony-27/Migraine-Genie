@@ -125,6 +125,7 @@ const Home: React.FC = () => {
                 </Typography>
                 <Typography
                   variant="h6"
+                  component="p"
                   sx={{
                     opacity: 0.85,
                     fontWeight: 400,
@@ -233,6 +234,7 @@ const Home: React.FC = () => {
         <Container maxWidth="md">
           <Typography
             variant={isSmall ? 'h5' : 'h4'}
+            component="h2"
             fontWeight={800}
             color="#0d47a1"
             textAlign="center"
@@ -263,7 +265,7 @@ const Home: React.FC = () => {
                 >
                   <CardContent sx={{ p: 0 }}>
                     <Box mb={2}>{feature.icon}</Box>
-                    <Typography variant="h6" fontWeight={700} color="#0d47a1" mb={1}>
+                    <Typography variant="h6" component="h3" fontWeight={700} color="#0d47a1" mb={1}>
                       {feature.title}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" lineHeight={1.7}>
@@ -290,6 +292,7 @@ const Home: React.FC = () => {
           <Container maxWidth="sm">
             <Typography
               variant={isSmall ? 'h5' : 'h4'}
+              component="h2"
               fontWeight={800}
               color="#fff"
               mb={2}

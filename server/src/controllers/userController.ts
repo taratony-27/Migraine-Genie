@@ -57,7 +57,8 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
 
         user = await User.create({
           firebase_uid: uid,
-          user_id: Date.now(),
+          // ms timestamp alone can collide when two people sign up at once
+          user_id: Date.now() * 1000 + Math.floor(Math.random() * 1000),
           name,
           email,
           ...(validDob && { date_of_birth: validDob }),

@@ -13,7 +13,7 @@ import AirIcon from '@mui/icons-material/Air';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import GrainIcon from '@mui/icons-material/Grain';
 import api from '../services/api';
-import { symptomInputs, symptomSections, problemOptions, severityLabels, VM_PATHI_MAX_SCORE, computeVmPathiScore } from '../constants/vmPathi';
+import { symptomInputs, symptomSections, problemOptions, severityLabels, VM_PATHI_MAX_SCORE, computeVmPathiScore, symptomLabel } from '../constants/vmPathi';
 import { toDateKey, todayKey } from '../utils/date';
 
 // Sensible ranges for the number fields (hours). Migraines can last up to ~3 days.
@@ -358,7 +358,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                 .filter(([_, value]) => value !== '')
                 .map(([symptom, value]) => (
                   <Typography key={symptom} variant="body2">
-                    {symptom}: {String(value || '-')}
+                    {symptomLabel(symptom)}: {String(value || '-')}
                   </Typography>
                 ))}
             </>
@@ -461,7 +461,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         justifyContent: 'flex-start', 
       }}
     >
-      <ToggleButton value="stress" aria-label="stress" 
+      <ToggleButton value="stress" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -469,7 +469,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/stress.png"
-          alt="Stress"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -477,7 +477,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="lesssleep" aria-label="lesssleep" 
+      <ToggleButton value="lesssleep" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -485,7 +485,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/exhausted-man.png"
-          alt="Less Sleep"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -493,7 +493,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="dehydration" aria-label="dehydration" 
+      <ToggleButton value="dehydration" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -501,7 +501,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/no-water.png"
-          alt="Dehydration"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -509,7 +509,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="hormonalchanges" aria-label="hormonalchanges" 
+      <ToggleButton value="hormonalchanges" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -517,7 +517,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/pad.png"
-          alt="Period"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -525,7 +525,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="certainfoods" aria-label="certainfoods" 
+      <ToggleButton value="certainfoods" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -533,7 +533,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/restaurant.png"
-          alt="Certain Foods"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -541,7 +541,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="weather" aria-label="weather" 
+      <ToggleButton value="weather" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -549,7 +549,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/weather.png"
-          alt="Weather"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -557,7 +557,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="lights" aria-label="lights" 
+      <ToggleButton value="lights" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -565,7 +565,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/lamp.png"
-          alt="Lights"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -573,7 +573,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="noise" aria-label="noise" 
+      <ToggleButton value="noise" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -581,7 +581,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/noise.png"
-          alt="Noise"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -589,7 +589,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="scents" aria-label="scents" 
+      <ToggleButton value="scents" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -597,7 +597,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/perfume.png"
-          alt="Scents"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -620,7 +620,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         justifyContent: 'flex-start', 
       }}
     >
-      <ToggleButton value="sunny" aria-label="sunny" 
+      <ToggleButton value="sunny" 
        sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 60, md: 75 },
@@ -632,7 +632,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="cloudy" aria-label="cloudy" 
+      <ToggleButton value="cloudy" 
        sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 60, md: 75 },
@@ -644,7 +644,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="thunder" aria-label="thunder" 
+      <ToggleButton value="thunder" 
        sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 60, md: 75 },
@@ -656,7 +656,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="windy" aria-label="windy" 
+      <ToggleButton value="windy" 
        sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 60, md: 75 },
@@ -668,7 +668,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="rainy" aria-label="rainy" 
+      <ToggleButton value="rainy" 
        sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 60, md: 75 },
@@ -680,7 +680,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="snowy" aria-label="snowy" 
+      <ToggleButton value="snowy" 
        sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 60, md: 75 },
@@ -707,7 +707,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         justifyContent: 'flex-start',
       }}
     >
-      <ToggleButton value="alcohol" aria-label="alcohol" 
+      <ToggleButton value="alcohol" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -715,7 +715,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/alcohol.svg"
-          alt="Alcohol"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -723,7 +723,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="caffeine" aria-label="caffeine" 
+      <ToggleButton value="caffeine" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -731,7 +731,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/caffeine.svg"
-          alt="Caffeine"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -739,7 +739,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="citrus" aria-label="citrus" 
+      <ToggleButton value="citrus" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -747,7 +747,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/citrus.svg"
-          alt="Citrus"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -755,7 +755,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="banana" aria-label="banana" 
+      <ToggleButton value="banana" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -763,7 +763,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/banana.png"
-          alt="Banana"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -771,7 +771,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="avocado" aria-label="avocado" 
+      <ToggleButton value="avocado" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -779,7 +779,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/avocado.png"
-          alt="Avocado"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -787,7 +787,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="cheese" aria-label="cheese" 
+      <ToggleButton value="cheese" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -795,7 +795,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/cheese.svg"
-          alt="Cheese"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -803,7 +803,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="milk" aria-label="milk" 
+      <ToggleButton value="milk" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -811,7 +811,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/milk.svg"
-          alt="Milk"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -819,7 +819,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="yogurt" aria-label="yogurt" 
+      <ToggleButton value="yogurt" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -827,7 +827,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/yogurt.svg"
-          alt="Yogurt"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -835,7 +835,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="icecream" aria-label="icecream" 
+      <ToggleButton value="icecream" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -843,7 +843,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/icecream.svg"
-          alt="Icecream"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -851,7 +851,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="chocolate" aria-label="chocolate" 
+      <ToggleButton value="chocolate" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -859,7 +859,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/chocolate.svg"
-          alt="Chocolate"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -867,7 +867,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="peanutbutter" aria-label="peanutbutter" 
+      <ToggleButton value="peanutbutter" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -875,7 +875,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/peanutbutter.svg"
-          alt="Peanutbutter"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -883,7 +883,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="nuts" aria-label="nuts" 
+      <ToggleButton value="nuts" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -891,7 +891,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/nuts.png"
-          alt="Nuts"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -899,7 +899,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="processedmeats" aria-label="processedmeats" 
+      <ToggleButton value="processedmeats" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -907,7 +907,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/processedmeats.svg"
-          alt="Processedmeats"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -915,7 +915,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="fermentedfoods" aria-label="fermentedfoods" 
+      <ToggleButton value="fermentedfoods" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -923,7 +923,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/pickle.png"
-          alt="Fermented foods"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -931,7 +931,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="msg" aria-label="msg" 
+      <ToggleButton value="msg" 
       sx={{
         width: { xs: 90, md: 100 },
         height: { xs: 70, md: 75 },
@@ -939,7 +939,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/chips.png"
-          alt="msg"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -962,7 +962,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         justifyContent: 'flex-start', 
       }}
     >
-      <ToggleButton value="reading" aria-label="reading" 
+      <ToggleButton value="reading" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -970,7 +970,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/book.png"
-          alt="Reading"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -978,7 +978,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="excersing" aria-label="excersing" 
+      <ToggleButton value="excersing" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -986,15 +986,15 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/running-excersice.png"
-          alt="Reading"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
-            Excercising
+            Exercising
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="traveling" aria-label="traveling" 
+      <ToggleButton value="traveling" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -1002,7 +1002,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/car.png"
-          alt="Traveling"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -1010,7 +1010,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="socializing" aria-label="socializing" 
+      <ToggleButton value="socializing" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -1018,7 +1018,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/speak.png"
-          alt="Socializing"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -1026,7 +1026,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="chores" aria-label="chores" 
+      <ToggleButton value="chores" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -1034,7 +1034,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/sweeping.png"
-          alt="Chores"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -1042,7 +1042,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="shopping" aria-label="shopping" 
+      <ToggleButton value="shopping" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -1050,7 +1050,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/shopping-cart.png"
-          alt="Shopping"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -1058,7 +1058,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="outside" aria-label="outside" 
+      <ToggleButton value="outside" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -1066,7 +1066,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/park.png"
-          alt="Outside"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -1074,7 +1074,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="headphones" aria-label="headphones" 
+      <ToggleButton value="headphones" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -1082,7 +1082,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/headphones.png"
-          alt="Headphones"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>
@@ -1090,7 +1090,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           </Typography>
         </Box>
       </ToggleButton>
-      <ToggleButton value="crowd" aria-label="crowd" 
+      <ToggleButton value="crowd" 
       sx={{
         width: { xs: 90, md: 100 }, 
         height: { xs: 70, md: 75 }, 
@@ -1098,7 +1098,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
         <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
         <img
           src="/icons/crowd-of-users.png"
-          alt="Crowd"
+          alt=""
           style={{ width: 24, height: 24 }}
         />
           <Typography variant="caption" sx={{ textTransform: 'none' }}>

@@ -1,10 +1,9 @@
 import React from 'react';
 import { Box, Typography, Divider, Link, Stack } from '@mui/material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { SITE } from '../config/site';
 
 const Footer: React.FC = () => {
-  const navigate = useNavigate();
   const isLoggedIn = !!localStorage.getItem('token');
 
   return (
@@ -32,7 +31,7 @@ const Footer: React.FC = () => {
       >
         {/* Brand */}
         <Box>
-          <Typography variant="h6" fontWeight={800} color="#fff" mb={1}>
+          <Typography variant="h6" component="p" fontWeight={800} color="#fff" mb={1}>
             {SITE.name}
           </Typography>
           <Typography variant="body2" sx={{ maxWidth: 240, lineHeight: 1.7, opacity: 0.75 }}>
@@ -50,11 +49,11 @@ const Footer: React.FC = () => {
           </Typography>
           {isLoggedIn ? (
             <>
-              <Link onClick={() => navigate('/dashboard')} sx={linkSx}>Dashboard</Link>
-              <Link onClick={() => navigate('/account')} sx={linkSx}>Account</Link>
+              <Link component={RouterLink} to="/dashboard" sx={linkSx}>Dashboard</Link>
+              <Link component={RouterLink} to="/account" sx={linkSx}>Account</Link>
             </>
           ) : (
-            <Link onClick={() => navigate('/')} sx={linkSx}>Login / Sign Up</Link>
+            <Link component={RouterLink} to="/" sx={linkSx}>Login / Sign Up</Link>
           )}
         </Stack>
 

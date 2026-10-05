@@ -34,6 +34,10 @@ under **Redirects/Rewrites**:
 REACT_APP_API_BASE=https://api.migraine-genie.com
 ```
 
+> As of Oct 2026 the `api` DNS record has not been added, and the live site calls
+> `https://migrainegenie-server.onrender.com` instead. That works; switch to the `api`
+> subdomain only after the record in section 4 resolves.
+
 ⚠️ This is baked in at **build time**, not read at runtime. Any change to it requires a
 redeploy of the client — not just a restart.
 
@@ -47,6 +51,7 @@ OPENROUTER_API_KEY=sk-or-...
 OPENROUTER_SITE_URL=https://migraine-genie.com
 OPENROUTER_APP_NAME=Migraine Genie
 YOUTUBE_API_KEY=...
+# Optional: CORS_ORIGINS=https://migraine-genie.com,https://www.migraine-genie.com
 ```
 
 `FIREBASE_SERVICE_ACCOUNT_JSON` accepts the raw service-account JSON or base64-encoded
@@ -177,22 +182,14 @@ default project name.
 
 ## Recommended hardening before launch
 
-**Lock down CORS.** The API currently accepts requests from any origin
-(`app.use(cors())` in `server/src/server.ts`). Once the domain is live, restrict it:
+**CORS is locked down.** The API only accepts browser requests from
+`https://migraine-genie.com`, `https://www.migraine-genie.com` and `http://localhost:3000`
+(`server/src/server.ts`). If the site is ever served from another address (for example its
+`.onrender.com` URL), set `CORS_ORIGINS` on the API service to a comma-separated list.
 
-```ts
-app.use(cors({
-  origin: [
-    'https://migraine-genie.com',
-    'https://www.migraine-genie.com',
-    'http://localhost:3000',
-  ],
-}));
-```
-
-**Cap AI spend.** Every user's chat spends your OpenRouter credit against a single shared
-key. Set a monthly spend limit in the OpenRouter dashboard and add per-user rate limiting
-before opening signups publicly.
+**Cap AI spend.** The server limits each user to 30 chat messages, 10 new forecasts and
+20 YouTube searches an hour, but all users share one OpenRouter key. Also set a monthly
+spend limit in the OpenRouter dashboard.
 
 ---
 
