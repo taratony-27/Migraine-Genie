@@ -1,12 +1,11 @@
 import express from "express";
-import { deleteCurrentUser, getMe, getUsers, syncUser, updateUser } from "../controllers/userController";
+import { deleteCurrentUser, getMe, syncUser, updateUser } from "../controllers/userController";
 import { googleAuth } from "../controllers/authGoogleController";
 import { authenticateToken } from "../middleware/auth";
 
 const router = express.Router();
 
 // Public
-router.get("/", getUsers);
 router.post("/auth/google", googleAuth);
 
 // Protected — require a valid Firebase ID token

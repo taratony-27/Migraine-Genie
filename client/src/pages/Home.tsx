@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box, Typography, Card, CardContent, Grid, Container,
   useTheme, useMediaQuery, Button, Chip
@@ -9,7 +9,7 @@ import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import InsightsIcon from '@mui/icons-material/Insights';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate } from 'react-router-dom';
-import Auth from '../components/Auth';
+import Auth, { AuthMode } from '../components/Auth';
 
 const Home: React.FC = () => {
   const theme = useTheme();
@@ -17,6 +17,17 @@ const Home: React.FC = () => {
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
   const isLoggedIn = !!localStorage.getItem('token');
   const navigate = useNavigate();
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+
+  // "Start for Free" / "Create Free Account": open the card on sign-up,
+  // bring it into view and put the cursor in the first field.
+  const openSignup = () => {
+    setAuthMode('signup');
+    document.getElementById('auth-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+      document.querySelector<HTMLInputElement>('#auth-card input[name="name"]')?.focus({ preventScroll: true });
+    }, 0);
+  };
 
   const featureData = [
     {
@@ -170,7 +181,7 @@ const Home: React.FC = () => {
             {/* Right: Auth form */}
             {!isLoggedIn && (
               <Grid item xs={12} md={6} display="flex" justifyContent="center">
-                <Auth />
+                <Auth mode={authMode} onModeChange={setAuthMode} />
               </Grid>
             )}
           </Grid>
@@ -205,8 +216,7 @@ const Home: React.FC = () => {
               <Button
                 variant="contained"
                 size="large"
-                href="#signup"
-                onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                onClick={openSignup}
                 sx={{ px: 5, py: 1.5, borderRadius: 3, fontWeight: 700, fontSize: '1rem' }}
               >
                 Start for Free
@@ -291,7 +301,7 @@ const Home: React.FC = () => {
             <Button
               variant="contained"
               size="large"
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              onClick={openSignup}
               sx={{
                 bgcolor: '#fff',
                 color: '#1565c0',

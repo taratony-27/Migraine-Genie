@@ -8,6 +8,7 @@ declare module 'express-serve-static-core' {
     user?: {
       uid: string;       // Firebase UID — use this as the primary identifier
       email?: string;
+      emailVerified: boolean;
       name?: string;
     };
   }
@@ -31,6 +32,7 @@ export const authenticateToken = async (
     req.user = {
       uid: decoded.uid,
       email: decoded.email,
+      emailVerified: decoded.email_verified === true,
       name: decoded.name,
     };
     next();

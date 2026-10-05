@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { SITE } from '../config/site';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { endSession } from '../services/session';
 
 const Header: React.FC = () => {
   const location = useLocation();
@@ -23,10 +24,9 @@ const Header: React.FC = () => {
   const handleMenuClose = () => setAnchorEl(null);
 
   const goToAccount = () => { handleMenuClose(); navigate('/account'); };
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const logout = async () => {
     handleMenuClose();
+    await endSession();
     navigate('/');
   };
 

@@ -1,10 +1,17 @@
 import { Request, Response } from 'express';
 import Medication from '../models/Medication';
+import { getAuthenticatedUserId } from '../utils/authUser';
 
-// GET: Get all medications
+// GET: the signed-in user's medications
 export const getMedications = async (req: Request, res: Response) => {
   try {
-    const medications = await Medication.find().sort({ created_at: -1 });
+    const userId = await getAuthenticatedUserId(req);
+    if (userId === undefined) {
+      res.status(403).json({ message: 'Authenticated user profile not found' });
+      return;
+    }
+
+    const medications = await Medication.find({ user_id: userId }).sort({ created_at: -1 });
     res.json(medications);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
@@ -13,8 +20,11 @@ export const getMedications = async (req: Request, res: Response) => {
 
 export const createMedication = async (req: Request, res: Response) => {
   try {
-    console.log('POST /api/medications HIT');
-    console.log('Body:', req.body);
+    const userId = await getAuthenticatedUserId(req);
+    if (userId === undefined) {
+      res.status(403).json({ message: 'Authenticated user profile not found' });
+      return;
+    }
 
     const {
       medication_name,
@@ -23,7 +33,6 @@ export const createMedication = async (req: Request, res: Response) => {
       start_date,
       end_date,
       notes,
-      user_id,
       medication_id,
       taken,
       created_at,
@@ -36,7 +45,8 @@ export const createMedication = async (req: Request, res: Response) => {
       start_date,
       end_date,
       notes,
-      user_id,
+      // Owner comes from the verified token; any user_id in the body is ignored.
+      user_id: userId,
       medication_id,
       taken,
       created_at,

@@ -17,8 +17,15 @@ import api from "../services/api";
 
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
-const Auth: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
+export type AuthMode = "login" | "signup";
+
+// Pass mode/onModeChange to let the page switch the card (e.g. a "Sign up" CTA);
+// without them the card manages its own mode.
+const Auth: React.FC<{ mode?: AuthMode; onModeChange?: (mode: AuthMode) => void }> = ({ mode, onModeChange }) => {
+  const [localIsLogin, setLocalIsLogin] = useState(true);
+  const isLogin = mode ? mode === "login" : localIsLogin;
+  const setIsLogin = (login: boolean) =>
+    onModeChange ? onModeChange(login ? "login" : "signup") : setLocalIsLogin(login);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "", email: "", password: "", dateOfBirth: "", gender: "",
@@ -129,6 +136,7 @@ const Auth: React.FC = () => {
   return (
     <>
       <Paper
+        id="auth-card"
         elevation={8}
         sx={{
           maxWidth: 380, width: "100%",

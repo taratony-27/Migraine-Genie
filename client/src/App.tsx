@@ -10,6 +10,7 @@ import Visualization from './components/Visualization';
 import Layout from './components/Layout';
 import VerifyEmail from "./pages/VerifyEmail";
 import Seo from './components/Seo';
+import RequireAuth from './components/RequireAuth';
 
 const App: React.FC = () => {
   return (
@@ -18,12 +19,12 @@ const App: React.FC = () => {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/daily-log" element={<DailyLog />} />
-          <Route path="/account" element={<Account />} />
-          <Route path="/wellness-program" element={<WellnessProgram />} />
-          <Route path="/ai-assistant" element={<AIAssistant />} />
-          <Route path="/visualization" element={<Visualization />} />
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/daily-log" element={<RequireAuth><DailyLog /></RequireAuth>} />
+          <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
+          <Route path="/wellness-program" element={<RequireAuth><WellnessProgram /></RequireAuth>} />
+          <Route path="/ai-assistant" element={<RequireAuth><AIAssistant /></RequireAuth>} />
+          <Route path="/visualization" element={<RequireAuth><Visualization /></RequireAuth>} />
           <Route path="/verify-email" element={<VerifyEmail />} />
         </Routes>
       </Layout>

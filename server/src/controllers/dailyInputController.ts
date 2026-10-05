@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import DailyInput from '../models/DailyInput';
-import User from '../models/User';
+import { getAuthenticatedUserId } from '../utils/authUser';
 
 /**
  * Normalize a log date to UTC midnight of the calendar day the user picked.
@@ -19,13 +19,6 @@ function startOfDay(dateLike?: string | number | Date): Date {
   }
   const d = dateLike ? new Date(dateLike) : new Date();
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-async function getAuthenticatedUserId(req: Request): Promise<number | undefined> {
-  if (!req.user?.uid) return undefined;
-
-  const user = await User.findOne({ firebase_uid: req.user.uid }).select('user_id').lean();
-  return typeof user?.user_id === 'number' ? user.user_id : undefined;
 }
 
 /**

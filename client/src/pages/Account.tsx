@@ -11,9 +11,10 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PersonIcon from '@mui/icons-material/Person';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { sendPasswordResetEmail, signOut } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import api from '../services/api';
+import { endSession } from '../services/session';
 
 // created_at is a real timestamp (not a calendar-only date), so local
 // formatting is correct here.
@@ -157,14 +158,7 @@ const Account: React.FC = () => {
   };
 
   const clearSessionAndGoHome = async () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    delete api.defaults.headers.common.Authorization;
-    try {
-      await signOut(auth);
-    } catch {
-      // Local session cleanup above is enough for navigation state.
-    }
+    await endSession();
     navigate('/');
   };
 
