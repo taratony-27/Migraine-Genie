@@ -14,6 +14,7 @@ export const getTriggers = async (req: Request, res: Response) => {
     const triggers = await Trigger.find({ user_id: userId });
     res.json(triggers);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    console.error('Server error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };

@@ -19,6 +19,13 @@ export const toDateKey = (value?: string | Date | null): string => {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 };
 
+/** Today's calendar day in the user's own timezone, e.g. "2025-06-09". */
+export const todayKey = (): string => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 /** "2025-06-09T00:00:00.000Z" -> "6/9/2025" (locale formatted, no TZ shift) */
 export const formatLogDate = (
   value?: string | Date | null,

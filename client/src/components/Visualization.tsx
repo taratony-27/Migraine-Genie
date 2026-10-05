@@ -146,6 +146,8 @@ const severityChip = (v: string | number | null | undefined) => {
       ? 'Moderate'
       : s.toLowerCase() === 'severe'
       ? 'Severe'
+      : s.toLowerCase() === 'extreme'
+      ? 'Extreme'
       : s.toLowerCase() === 'yes'
       ? 'Yes'
       : s.toLowerCase() === 'no'
@@ -157,6 +159,7 @@ const severityChip = (v: string | number | null | undefined) => {
     Mild: { bg: '#D7EAF9', fg: '#0f172a' },
     Moderate: { bg: '#A9D7EF', fg: '#0f172a' },
     Severe: { bg: '#53B5E9', fg: '#0b1324' },
+    Extreme: { bg: '#1565C0', fg: '#ffffff' },
     Yes: { bg: '#A9D7EF', fg: '#0f172a' },
     '': { bg: '#E0E0E0', fg: '#1e293b' },
   };
@@ -300,7 +303,8 @@ const Visualization: React.FC = () => {
       });
 
       const score = typeof entry.vmPathiScore === 'number' ? entry.vmPathiScore : computeVmPathiScore(symptoms);
-      sevByDate[key] = (sevByDate[key] || 0) + score;
+      // Scores are 0-100 per entry; if a day has more than one entry, show the worst.
+      sevByDate[key] = Math.max(sevByDate[key] ?? 0, score);
     });
 
     const topSymptoms = Object.entries(symptomCounts)

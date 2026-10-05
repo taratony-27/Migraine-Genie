@@ -14,7 +14,8 @@ export const getMedications = async (req: Request, res: Response) => {
     const medications = await Medication.find({ user_id: userId }).sort({ created_at: -1 });
     res.json(medications);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    console.error('Server error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -33,10 +34,13 @@ export const createMedication = async (req: Request, res: Response) => {
       start_date,
       end_date,
       notes,
-      medication_id,
       taken,
-      created_at,
     } = req.body;
+
+    if (start_date && end_date && new Date(end_date) < new Date(start_date)) {
+      res.status(400).json({ message: "The end date can't be before the start date." });
+      return;
+    }
 
     const newMedication = new Medication({
       medication_name,
@@ -45,17 +49,19 @@ export const createMedication = async (req: Request, res: Response) => {
       start_date,
       end_date,
       notes,
-      // Owner comes from the verified token; any user_id in the body is ignored.
+      // Owner and ID are set here; any user_id / medication_id in the body is ignored.
       user_id: userId,
-      medication_id,
-      taken,
-      created_at,
+      medication_id: Date.now() * 1000 + Math.floor(Math.random() * 1000),
+      taken: taken !== false,
     });
 
     const saved = await newMedication.save();
     res.status(201).json(saved);
   } catch (error: any) {
     console.error('Failed to save medication:', error.message || error);
-    res.status(400).json({ message: 'Failed to save medication', error: error.message || error });
+    const message = error?.name === 'ValidationError'
+      ? 'Please fill in the medication name, dosage, frequency and start date.'
+      : 'Failed to save medication.';
+    res.status(400).json({ message });
   }
 };

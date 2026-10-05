@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Only the public landing page is listed. Every other route is behind sign-in,
+  Only the public pages are listed. Every other route is behind sign-in,
   holds personal health data, and is disallowed in robots.txt.
   Add new public pages (pricing, blog, about) here as they ship.
 -->
@@ -9,5 +9,10 @@
     <loc>https://migraine-genie.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://migraine-genie.com/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

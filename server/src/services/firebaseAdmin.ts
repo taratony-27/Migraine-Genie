@@ -4,6 +4,9 @@ import fs from 'fs';
 
 let app: App;
 
+/** False when no service account was found; every sign-in check will fail. */
+export let firebaseConfigured = true;
+
 const parseServiceAccount = (raw: string): ServiceAccount => {
   const source = raw.trim().startsWith('{')
     ? raw
@@ -36,12 +39,16 @@ if (!getApps().length) {
     const serviceAccount = parseServiceAccount(keyJson);
     app = initializeApp({ credential: cert(serviceAccount) });
   } else {
-    console.warn(
+    const msg =
       '[Firebase Admin] No service account configured. ' +
-      'Set FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON in your .env'
-    );
-    // Initialize without credentials so the rest of the app doesn't crash.
-    // Token verification will fail until credentials are provided.
+      'Set FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON.';
+    // On Render (RENDER=true) or in production, refuse to start: otherwise
+    // every request fails sign-in and the real cause is hidden.
+    if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+      throw new Error(msg);
+    }
+    console.warn(`${msg} Signed-in requests will return 503 until it is set.`);
+    firebaseConfigured = false;
     app = initializeApp();
   }
 } else {

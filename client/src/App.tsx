@@ -11,6 +11,8 @@ import Layout from './components/Layout';
 import VerifyEmail from "./pages/VerifyEmail";
 import Seo from './components/Seo';
 import RequireAuth from './components/RequireAuth';
+import Privacy from './pages/Privacy';
+import NotFound from './pages/NotFound';
 
 const App: React.FC = () => {
   return (
@@ -26,6 +28,8 @@ const App: React.FC = () => {
           <Route path="/ai-assistant" element={<RequireAuth><AIAssistant /></RequireAuth>} />
           <Route path="/visualization" element={<RequireAuth><Visualization /></RequireAuth>} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
     </Router>

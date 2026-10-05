@@ -43,6 +43,9 @@ const Header: React.FC = () => {
       sx={{
         top: 0,
         zIndex: 1100,
+        // On home the transparent bar floats over the blue hero (which pads
+        // its top by the same amount) so the white logo is readable.
+        mb: isHome ? { xs: '-56px', sm: '-64px' } : 0,
         bgcolor: elevated ? '#fff' : 'transparent',
         backdropFilter: elevated ? 'none' : 'blur(4px)',
         color: isHome && !elevated ? '#fff' : 'text.primary',

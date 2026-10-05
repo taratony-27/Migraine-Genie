@@ -3,6 +3,7 @@ import {
   Box, Typography, Paper, CircularProgress, Grid, Chip,
 } from '@mui/material';
 import api from '../services/api';
+import { formatLogDate } from '../utils/date';
 
 interface MedicationEntry {
   _id: string;
@@ -16,8 +17,8 @@ interface MedicationEntry {
   created_at: string;
 }
 
-const fmtDate = (d?: string) =>
-  d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+// Dates are stored as UTC midnight; read the calendar day so it doesn't shift a day west of UTC.
+const fmtDate = (d?: string) => formatLogDate(d, { month: 'short', day: 'numeric', year: 'numeric' });
 
 const MedicationHistory: React.FC = () => {
   const [history, setHistory] = useState<MedicationEntry[]>([]);

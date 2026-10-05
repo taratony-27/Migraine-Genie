@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 
 const PredictionSchema = new mongoose.Schema({
   user_id: { type: Number, required: true, unique: true }, // One prediction doc per user
-  latest_log_id: { type: Number, required: true },         // THE KEY: Tracks which entry this prediction is based on
+  latest_log_id: { type: Number, required: true },         // Newest entry this prediction is based on
+  logs_hash: { type: String },                              // Fingerprint of the entries used; changes when one is edited
   
   // The actual AI response
   data: {

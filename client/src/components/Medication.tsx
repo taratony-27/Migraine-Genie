@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, TextField, Stack, Button, Paper,
-  Snackbar, Alert,
+  Snackbar, Alert, FormControlLabel, Checkbox,
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
 import AddIcon from '@mui/icons-material/Add';
@@ -13,6 +13,7 @@ const Medication: React.FC = () => {
     medication_name: '', dosage: '', frequency: '',
     start_date: '', end_date: '', notes: '',
   });
+  const [taken, setTaken] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<{
@@ -35,19 +36,28 @@ const Medication: React.FC = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
+    const warn = (message: string) => setSnackbar({ open: true, message, severity: 'warning' });
+    if (!form.medication_name.trim()) return warn('Please enter the medication name.');
+    if (!form.dosage.trim()) return warn('Please enter the dosage.');
+    if (!form.frequency.trim()) return warn('Please enter how often you take it.');
+    if (!form.start_date) return warn('Please choose a start date.');
+    if (form.end_date && form.end_date < form.start_date) return warn("The end date can't be before the start date.");
+
     setLoading(true);
     try {
       const userId = resolveUserId();
+      // The server assigns the medication_id and owner.
       await api.post('/api/medications', {
-        ...form, user_id: userId,
-        medication_id: Math.floor(Math.random() * 1000),
-        taken: true, created_at: new Date().toISOString(),
+        ...form,
+        taken,
+        created_at: new Date().toISOString(),
       }, { params: { userId } });
 
       setSnackbar({ open: true, message: 'Medication saved successfully!', severity: 'success' });
       setForm({ medication_name: '', dosage: '', frequency: '', start_date: '', end_date: '', notes: '' });
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to save medication.', severity: 'error' });
+      setTaken(true);
+    } catch (err: any) {
+      setSnackbar({ open: true, message: err?.response?.data?.message || 'Failed to save medication.', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -82,16 +92,20 @@ const Medication: React.FC = () => {
           }}
         >
           <Stack spacing={2.5}>
-            <TextField label="Medication Name" name="medication_name" value={form.medication_name} onChange={handleChange} fullWidth />
+            <TextField label="Medication Name" name="medication_name" value={form.medication_name} onChange={handleChange} fullWidth required />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField label="Dosage (e.g. 500mg)" name="dosage" value={form.dosage} onChange={handleChange} fullWidth />
-              <TextField label="Frequency" name="frequency" value={form.frequency} onChange={handleChange} fullWidth />
+              <TextField label="Dosage (e.g. 500mg)" name="dosage" value={form.dosage} onChange={handleChange} fullWidth required />
+              <TextField label="Frequency" name="frequency" value={form.frequency} onChange={handleChange} fullWidth required />
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField label="Start Date" name="start_date" value={form.start_date} onChange={handleChange} type="date" fullWidth InputLabelProps={{ shrink: true }} />
-              <TextField label="End Date" name="end_date" value={form.end_date} onChange={handleChange} type="date" fullWidth InputLabelProps={{ shrink: true }} />
+              <TextField label="Start Date" name="start_date" value={form.start_date} onChange={handleChange} type="date" fullWidth required InputLabelProps={{ shrink: true }} />
+              <TextField label="End Date" name="end_date" value={form.end_date} onChange={handleChange} type="date" fullWidth InputLabelProps={{ shrink: true }} inputProps={{ min: form.start_date || undefined }} />
             </Stack>
             <TextField label="Notes (optional)" name="notes" value={form.notes} onChange={handleChange} multiline rows={3} fullWidth />
+            <FormControlLabel
+              control={<Checkbox checked={taken} onChange={(e) => setTaken(e.target.checked)} />}
+              label="I took it as planned"
+            />
             <Button
               variant="contained" size="large" fullWidth
               onClick={handleSubmit} disabled={loading}

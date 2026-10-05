@@ -14,6 +14,7 @@ export const getSymptoms = async (req: Request, res: Response) => {
     const symptoms = await Symptom.find({ user_id: userId });
     res.json(symptoms);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    console.error('Server error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };

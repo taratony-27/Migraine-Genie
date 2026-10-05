@@ -518,10 +518,7 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
     res.json({ reply, modelUsed });
   } catch (err: any) {
     console.error("Doctor assistant error:", err?.message || err);
-    res.status(500).json({
-      message: "Failed to generate assistant reply.",
-      error: err?.message || "unknown_error",
-    });
+    res.status(500).json({ message: "Failed to generate assistant reply." });
   }
 });
 

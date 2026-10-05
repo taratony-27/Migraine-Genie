@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { getAuth } from 'firebase-admin/auth';
-import firebaseApp from '../services/firebaseAdmin';
+import firebaseApp, { firebaseConfigured } from '../services/firebaseAdmin';
 
 // Extend Express Request to carry the verified Firebase user
 declare module 'express-serve-static-core' {
@@ -24,6 +24,11 @@ export const authenticateToken = async (
 
   if (!token) {
     res.status(401).json({ message: 'Access token missing' });
+    return;
+  }
+
+  if (!firebaseConfigured) {
+    res.status(503).json({ message: 'Sign-in is not configured on the server.' });
     return;
   }
 

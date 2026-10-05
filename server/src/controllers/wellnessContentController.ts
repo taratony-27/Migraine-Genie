@@ -95,8 +95,6 @@ export async function getWellnessContent(req: Request, res: Response): Promise<v
         ytSearchQuery,
         curatedCount: curatedItems.length,
         youtubeCount: youtubeItems.length,
-        // This helps you debug prod quickly without opening server logs:
-        hasYouTubeKey: Boolean(process.env.YOUTUBE_API_KEY && process.env.YOUTUBE_API_KEY.trim()),
       },
     });
   } catch (err: any) {

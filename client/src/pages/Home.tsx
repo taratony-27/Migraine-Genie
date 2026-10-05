@@ -75,7 +75,8 @@ const Home: React.FC = () => {
         sx={{
           background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 40%, #1976d2 100%)',
           color: '#fff',
-          pt: { xs: 6, md: 10 },
+          // 48/80px of breathing room plus the 56/64px header that overlaps the hero
+          pt: { xs: 13, sm: 14, md: 18 },
           pb: { xs: 8, md: 12 },
           px: 2,
           position: 'relative',
@@ -189,7 +190,8 @@ const Home: React.FC = () => {
       </Box>
 
       {/* ── About Us ── */}
-      <Box sx={{ bgcolor: '#f0f7ff', py: { xs: 7, md: 10 }, px: 2 }}>
+      {/* -1px hides a sub-pixel seam where the hero's curve meets this section */}
+      <Box sx={{ bgcolor: '#f0f7ff', py: { xs: 7, md: 10 }, px: 2, mt: '-1px', position: 'relative' }}>
         <Container maxWidth="md">
           <Typography
             variant={isSmall ? 'h5' : 'h4'}
@@ -243,7 +245,7 @@ const Home: React.FC = () => {
           </Typography>
           <Grid container columnSpacing={4} rowSpacing={4} justifyContent="center">
             {featureData.map((feature, idx) => (
-              <Grid item xs={12} sm={6} key={idx}>
+              <Grid item xs={12} sm={6} key={idx} sx={{ display: 'flex' }}>
                 <Card
                   elevation={0}
                   sx={{
@@ -251,7 +253,7 @@ const Home: React.FC = () => {
                     border: `1.5px solid ${feature.border}`,
                     borderRadius: 4,
                     p: { xs: 3, md: 4 },
-                    height: '100%',
+                    flex: 1,
                     transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                     '&:hover': {
                       transform: 'translateY(-4px)',

@@ -1,6 +1,7 @@
 // server/src/routes/predictionRoutes.ts
 import express, { Request, Response } from "express";
 import axios from "axios";
+import { createHash } from "crypto";
 import DailyInput from "../models/DailyInput";
 import Prediction from "../models/Prediction";
 import { authenticateToken } from "../middleware/auth";
@@ -369,22 +370,6 @@ router.get("/generate", async (req: Request, res: Response): Promise<void> => {
 
     const newestLog: any = recentLogs[0];
 
-    const savedPrediction: any = await Prediction.findOne({ user_id: userId });
-
-    if (savedPrediction && savedPrediction.latest_log_id === newestLog.log_id) {
-      console.log(`💾 Cache Hit: Prediction based on Log #${newestLog.log_id} already exists.`);
-      res.json(savedPrediction.data);
-      return;
-    }
-
-    // Cache misses call the paid AI; cap them per user.
-    if (!allowRequest(`predictions:${userId}`, 10, HOUR_MS)) {
-      res.status(429).json({ message: "Too many prediction updates. Please try again in an hour." });
-      return;
-    }
-
-    console.log(`🆕 New Data Detected (Log #${newestLog.log_id}). Generating AI response...`);
-
     const sortedByDate = [...recentLogs].sort(
       (a: any, b: any) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime()
     );
@@ -398,6 +383,25 @@ router.get("/generate", async (req: Request, res: Response): Promise<void> => {
       symptoms: raw.symptoms,
     }));
 
+    // Re-use the saved forecast only if the entries it was built from are
+    // unchanged, so editing an older entry also refreshes it.
+    const logsHash = createHash("sha1").update(JSON.stringify(contextData)).digest("hex");
+    const savedPrediction: any = await Prediction.findOne({ user_id: userId });
+
+    if (savedPrediction && savedPrediction.logs_hash === logsHash) {
+      console.log(`💾 Cache Hit: prediction for user ${userId} is up to date.`);
+      res.json(savedPrediction.data);
+      return;
+    }
+
+    // Cache misses call the paid AI; cap them per user.
+    if (!allowRequest(`predictions:${userId}`, 10, HOUR_MS)) {
+      res.status(429).json({ message: "Too many prediction updates. Please try again in an hour." });
+      return;
+    }
+
+    console.log(`🆕 New Data Detected (Log #${newestLog.log_id}). Generating AI response...`);
+
     const features = buildFeaturesFromLogs(recentLogs);
 
     const { data: validated, modelUsed } = await callMigraineModelWithFallback(features, contextData);
@@ -406,6 +410,7 @@ router.get("/generate", async (req: Request, res: Response): Promise<void> => {
       { user_id: userId },
       {
         latest_log_id: newestLog.log_id,
+        logs_hash: logsHash,
         data: validated,
         updated_at: new Date(),
         model_used: modelUsed,

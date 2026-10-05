@@ -45,6 +45,10 @@ const ROUTE_SEO: Record<string, RouteSeo> = {
     description: 'Manage your profile, login access, and account data.',
     noIndex: true,
   },
+  '/privacy': {
+    title: `Privacy Policy — ${SITE.name}`,
+    description: 'What Migraine Genie stores, who handles it, and how to delete your data.',
+  },
   '/verify-email': {
     title: `Verify Your Email — ${SITE.name}`,
     description: 'Confirm your email address to finish setting up your account.',
@@ -52,8 +56,9 @@ const ROUTE_SEO: Record<string, RouteSeo> = {
   },
 };
 
+// Unknown addresses render the NotFound page.
 const FALLBACK: RouteSeo = {
-  title: `${SITE.name} — ${SITE.tagline}`,
+  title: `Page not found — ${SITE.name}`,
   description: SITE.description,
   noIndex: true,
 };

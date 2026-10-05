@@ -40,7 +40,8 @@ function isPredictionData(data: PredictionApiResponse): data is PredictionData {
     (data as PredictionData).forecast !== undefined &&
     (data as PredictionData).triggers !== undefined &&
     Array.isArray((data as PredictionData).forecast) &&
-    Array.isArray((data as PredictionData).triggers)
+    Array.isArray((data as PredictionData).triggers) &&
+    Array.isArray((data as PredictionData).recommendations)
   );
 }
 
@@ -197,12 +198,15 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
     <Box sx={{ width: '100%', maxWidth: 900, mx: 'auto' }}>
       
       {/* Header */}
-      <Box mb={3} display="flex" alignItems="center" gap={1}>
+      <Box mb={1} display="flex" alignItems="center" gap={1}>
         <Monitor color="primary" />
         <Typography variant="h5" fontWeight="700" color="text.primary">
           Forecast Dashboard
         </Typography>
       </Box>
+      <Typography variant="caption" color="text.secondary" display="block" mb={3}>
+        AI estimates from your diary, not medical advice. Talk to a doctor about your migraines.
+      </Typography>
 
       {errorMsg && (
         <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff4f4', borderLeft: '4px solid #d32f2f' }}>

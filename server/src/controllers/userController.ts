@@ -4,6 +4,7 @@ import DailyInput from "../models/DailyInput";
 import Medication from "../models/Medication";
 import Symptom from "../models/Symptom";
 import Trigger from "../models/Trigger";
+import Prediction from "../models/Prediction";
 import { getAuth } from "firebase-admin/auth";
 import firebaseApp from "../services/firebaseAdmin";
 
@@ -74,7 +75,7 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
     res.json({ user: safeUser });
   } catch (err: any) {
     console.error("syncUser error:", err);
-    res.status(500).json({ message: "Sync error", error: err.message });
+    res.status(500).json({ message: "Sync error" });
   }
 };
 
@@ -116,7 +117,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (err: any) {
     console.error("getMe error:", err);
-    res.status(500).json({ message: "Failed to load account", error: err.message });
+    res.status(500).json({ message: "Failed to load account" });
   }
 };
 
@@ -138,6 +139,11 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    if (dateOfBirth && (Number.isNaN(new Date(dateOfBirth).getTime()) || new Date(dateOfBirth) > new Date())) {
+      res.status(400).json({ message: "Please enter a valid date of birth." });
+      return;
+    }
+
     const updated = await User.findOneAndUpdate(
       { firebase_uid: uid },
       {
@@ -155,7 +161,8 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
     res.json(updated);
   } catch (err: any) {
-    res.status(500).json({ message: "Update error", error: err.message });
+    console.error("updateUser error:", err);
+    res.status(500).json({ message: "Update error" });
   }
 };
 
@@ -181,6 +188,7 @@ export const deleteCurrentUser = async (req: Request, res: Response): Promise<vo
       userId ? Medication.deleteMany({ user_id: userId }) : Promise.resolve(),
       userId ? Symptom.deleteMany({ user_id: userId }) : Promise.resolve(),
       userId ? Trigger.deleteMany({ user_id: userId }) : Promise.resolve(),
+      userId ? Prediction.deleteMany({ user_id: userId }) : Promise.resolve(),
       User.deleteOne({ _id: user._id }),
     ]);
 
@@ -189,6 +197,6 @@ export const deleteCurrentUser = async (req: Request, res: Response): Promise<vo
     res.json({ message: "Account data deleted successfully" });
   } catch (err: any) {
     console.error("deleteCurrentUser error:", err);
-    res.status(500).json({ message: "Delete account failed", error: err.message });
+    res.status(500).json({ message: "Delete account failed" });
   }
 };

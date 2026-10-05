@@ -14,7 +14,10 @@ import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import GrainIcon from '@mui/icons-material/Grain';
 import api from '../services/api';
 import { symptomInputs, symptomSections, problemOptions, severityLabels, VM_PATHI_MAX_SCORE, computeVmPathiScore } from '../constants/vmPathi';
-import { toDateKey } from '../utils/date';
+import { toDateKey, todayKey } from '../utils/date';
+
+// Sensible ranges for the number fields (hours). Migraines can last up to ~3 days.
+const HOUR_LIMITS = { duration: 72, sleep: 24, screentime: 24 } as const;
 
 const intensityLevels = ['Mild', 'Moderate', 'Severe'];
 
@@ -147,6 +150,8 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
 
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
+  const [historyError, setHistoryError] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const resetEntry = () => {
     setEntry({
@@ -159,10 +164,23 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
   };
 
   const handleSubmit = async () => {
+    if (saving) return; // a second click while saving would post a duplicate entry
+    if (!entry.date) return notify('Date is required.', 'warning');
+    if (entry.date > todayKey()) return notify("The date can't be in the future.", 'warning');
+    if (entry.duration === '') return notify('Duration is required.', 'warning');
+    if (!entry.intensity) return notify('Intensity is required.', 'warning');
+    for (const [field, max] of Object.entries(HOUR_LIMITS)) {
+      const raw = entry[field];
+      if (raw === '' || raw === null || raw === undefined) continue;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > max) {
+        const label = field === 'screentime' ? 'Screen time' : field[0].toUpperCase() + field.slice(1);
+        return notify(`${label} must be between 0 and ${max} hours.`, 'warning');
+      }
+    }
+
+    setSaving(true);
     try {
-      if (!entry.date) return notify('Date is required.', 'warning');
-      if (entry.duration === '') return notify('Duration is required.', 'warning');
-      if (!entry.intensity) return notify('Intensity is required.', 'warning');
 
       const isEdit = Boolean(entry._id);
       const payload = buildPayload(entry, isEdit);
@@ -182,18 +200,24 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
       console.error('Error submitting entry:', error);
       const msg = error?.response?.data?.message || 'An error occurred while submitting the entry. Please try again.';
       notify(msg, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setHistoryError(false);
+    try {
+      const { data } = await api.get('/api/daily-inputs', { params: { userId: currentUserId } });
+      setHistory(data);
+    } catch (err) {
+      console.error('Failed to load history', err);
+      setHistoryError(true);
     }
   };
 
   const toggleHistory = async () => {
-    if (!showHistory) {
-      try {
-        const { data } = await api.get('/api/daily-inputs', { params: { userId: currentUserId } });
-        setHistory(data);
-      } catch (err) {
-        console.error('Failed to load history', err);
-      }
-    }
+    if (!showHistory) await loadHistory();
     setShowHistory(prev => !prev);
   };
 
@@ -296,7 +320,12 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
           <Typography variant="h6" gutterBottom>
             Entry History
           </Typography>
-          {history.length === 0 ? (
+          {historyError ? (
+            <Box>
+              <Typography color="error" gutterBottom>We couldn't load your past entries.</Typography>
+              <Button size="small" variant="outlined" onClick={loadHistory}>Try again</Button>
+            </Box>
+          ) : history.length === 0 ? (
             <Typography>No past entries found.</Typography>
           ) : (
             history.map((log, idx) => (
@@ -372,6 +401,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                 value={entry.date}
                 onChange={handleChange}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ max: todayKey() }}
               />
 
               <TextField
@@ -381,6 +411,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                 name="duration"
                 value={entry.duration}
                 onChange={handleChange}
+                inputProps={{ min: 0, max: HOUR_LIMITS.duration, step: 0.5 }}
               />
 
               <TextField
@@ -403,6 +434,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
               name="sleep"
               value={entry.sleep}
               onChange={handleChange}
+              inputProps={{ min: 0, max: HOUR_LIMITS.sleep, step: 0.5 }}
             />
 
               <TextField
@@ -412,6 +444,7 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
                 name="screentime"
                 value={entry.screentime}
                 onChange={handleChange}
+                inputProps={{ min: 0, max: HOUR_LIMITS.screentime, step: 0.5 }}
               />
               
 
@@ -1132,9 +1165,10 @@ const DailyLog: React.FC<DailyLogProps> = ({ userId }) => {
             color="primary"
             fullWidth
             onClick={handleSubmit}
+            disabled={saving}
             sx={{ backgroundColor: '#1565c0', '&:hover': { backgroundColor: '#0d47a1' } }}
           >
-            {entry._id ? 'Update Entry' : 'Save Entry'}
+            {saving ? 'Saving…' : entry._id ? 'Update Entry' : 'Save Entry'}
           </Button>
         </Box>
       )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Divider, Link, Stack } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { SITE } from '../config/site';
 
 const Footer: React.FC = () => {
@@ -66,11 +66,17 @@ const Footer: React.FC = () => {
           <Link href={`mailto:${SITE.supportEmail}`} sx={linkSx}>
             {SITE.supportEmail}
           </Link>
+          <Link component={RouterLink} to="/privacy" sx={linkSx}>
+            Privacy policy
+          </Link>
         </Stack>
       </Box>
 
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)', mb: 3 }} />
 
+      <Typography variant="body2" textAlign="center" sx={{ opacity: 0.7, mb: 1.5, maxWidth: 640, mx: 'auto' }}>
+        {SITE.name} helps you spot patterns. It is not medical advice and doesn&apos;t replace a doctor.
+      </Typography>
       <Typography variant="body2" textAlign="center" sx={{ opacity: 0.5 }}>
         © {new Date().getFullYear()} {SITE.name}. All rights reserved.
       </Typography>
