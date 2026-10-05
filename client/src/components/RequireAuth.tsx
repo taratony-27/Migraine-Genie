@@ -23,7 +23,13 @@ const RequireAuth: React.FC<{ children: React.ReactElement }> = ({ children }) =
     );
   }
 
-  return user ? children : <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/" replace />;
+
+  // Email/password accounts must confirm their address first (Google
+  // accounts arrive verified).
+  if (!user.emailVerified) return <Navigate to="/verify-email" replace />;
+
+  return children;
 };
 
 export default RequireAuth;

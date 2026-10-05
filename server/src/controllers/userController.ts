@@ -49,11 +49,18 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
         user.email_verified = true;
         await user.save();
       } else {
+        // Optional profile details from the sign-up form; ignore anything malformed.
+        const dob = body.date_of_birth ? new Date(body.date_of_birth) : null;
+        const validDob = dob && !Number.isNaN(dob.getTime()) && dob <= new Date() ? dob : undefined;
+        const validGender = ["male", "female", "other"].includes(body.gender ?? "") ? body.gender : undefined;
+
         user = await User.create({
           firebase_uid: uid,
           user_id: Date.now(),
           name,
           email,
+          ...(validDob && { date_of_birth: validDob }),
+          ...(validGender && { gender: validGender }),
           auth_provider: "firebase",
           email_verified: emailVerified,
         });

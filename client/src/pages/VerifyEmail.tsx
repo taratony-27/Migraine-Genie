@@ -1,172 +1,123 @@
-// ==============================
-// 1) client/src/pages/VerifyEmail.tsx (IMPROVED)
-// - Handles success redirect
-// - Adds resend flow
-// - Does not assume user exists (no leakage)
-// - Stores verified flag in localStorage user if present
-// ==============================
-import React, { useEffect, useMemo, useState } from "react";
-import { Box, Paper, Typography, Button, Alert, TextField, CircularProgress } from "@mui/material";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import api from "../services/api";
+import React, { useEffect, useState } from "react";
+import { Box, Paper, Typography, Button, Alert, CircularProgress } from "@mui/material";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { applyActionCode, onAuthStateChanged, sendEmailVerification, User } from "firebase/auth";
+import { auth } from "../services/firebase";
+import { endSession } from "../services/session";
 
-type State = "idle" | "verifying" | "success" | "error" | "resending" | "resent";
-
+// Email/password accounts land here until they confirm their address
+// (RequireAuth sends them). Firebase sends and checks the link itself; if the
+// Firebase action URL ever points at this page, the oobCode is applied here too.
 const VerifyEmail: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const oobCode = searchParams.get("mode") === "verifyEmail" ? searchParams.get("oobCode") : null;
 
-  const token = useMemo(() => searchParams.get("token") || "", [searchParams]);
+  // undefined = Firebase hasn't reported yet
+  const [user, setUser] = useState<User | null | undefined>(auth.currentUser ?? undefined);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{ severity: "success" | "info" | "error"; text: string } | null>(null);
 
-  const [state, setState] = useState<State>("idle");
-  const [message, setMessage] = useState<string>("");
-
-  // For resend
-  const [email, setEmail] = useState<string>(() => {
-    try {
-      const u = JSON.parse(localStorage.getItem("user") || "null");
-      return u?.email || "";
-    } catch {
-      return "";
-    }
-  });
-
-  const setVerifiedInLocalStorageIfSameEmail = () => {
-    try {
-      const stored = localStorage.getItem("user");
-      if (!stored) return;
-      const user = JSON.parse(stored);
-      if (!user || typeof user !== "object") return;
-
-      // mark verified (safe even if user is different shape)
-      user.email_verified = true;
-      localStorage.setItem("user", JSON.stringify(user));
-    } catch {
-      /* ignore */
-    }
-  };
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
 
   useEffect(() => {
-    const run = async () => {
-      if (!token) {
-        setState("error");
-        setMessage("Missing verification token.");
-        return;
-      }
+    if (!oobCode) return;
+    setBusy(true);
+    applyActionCode(auth, oobCode)
+      .then(async () => {
+        await auth.currentUser?.reload();
+        setNotice({ severity: "success", text: "Your email is verified." });
+      })
+      .catch(() => setNotice({ severity: "error", text: "This link has expired or was already used. Send a new one below." }))
+      .finally(() => setBusy(false));
+  }, [oobCode]);
 
-      try {
-        setState("verifying");
-        setMessage("Verifying your email...");
-
-        const res = await api.get(`/api/users/verify-email?token=${encodeURIComponent(token)}`);
-
-        setVerifiedInLocalStorageIfSameEmail();
-
-        setState("success");
-        setMessage(res.data?.message || "Email verified successfully.");
-
-        setTimeout(() => navigate("/", { replace: true }), 2000);
-      } catch (err: any) {
-        setState("error");
-        setMessage(err?.response?.data?.message || "Verification failed or token expired.");
-      }
-    };
-
-    run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  // Already verified (or a Google account): nothing to do here.
+  useEffect(() => {
+    if (user?.emailVerified && !oobCode) navigate("/dashboard", { replace: true });
+  }, [user, oobCode, navigate]);
 
   const resend = async () => {
+    if (!auth.currentUser) return;
+    setBusy(true);
     try {
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        setState("error");
-        setMessage("Enter a valid email address to resend verification.");
-        return;
-      }
-
-      setState("resending");
-      setMessage("");
-
-      const res = await api.post("/api/users/resend-verification", { email });
-      setState("resent");
-      setMessage(res.data?.message || "If that email exists, a verification email has been sent.");
+      await sendEmailVerification(auth.currentUser);
+      setNotice({ severity: "info", text: `We sent a new link to ${auth.currentUser.email}.` });
     } catch (err: any) {
-      setState("error");
-      setMessage(err?.response?.data?.message || "Failed to resend verification email.");
+      setNotice({
+        severity: "error",
+        text: err?.code === "auth/too-many-requests"
+          ? "Please wait a few minutes before asking for another email."
+          : "We couldn't send the email. Please try again.",
+      });
+    } finally {
+      setBusy(false);
     }
   };
 
-  const isBusy = state === "verifying" || state === "resending";
+  const continueIfVerified = async () => {
+    if (!auth.currentUser) return;
+    setBusy(true);
+    try {
+      await auth.currentUser.reload();
+      if (auth.currentUser.emailVerified) {
+        // Refresh the ID token so the server sees email_verified = true.
+        await auth.currentUser.getIdToken(true);
+        navigate("/dashboard", { replace: true });
+      } else {
+        setNotice({ severity: "info", text: "We haven't seen the click yet. Open the link in the email, then try again." });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const logout = async () => {
+    await endSession();
+    navigate("/", { replace: true });
+  };
 
   return (
     <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh" p={2} bgcolor="#f4faff">
       <Paper sx={{ p: 4, maxWidth: 520, width: "100%", borderRadius: 3 }} elevation={6}>
         <Typography variant="h5" fontWeight="bold" gutterBottom color="#1565c0">
-          Email Verification
+          Verify your email
         </Typography>
 
-        {state === "verifying" && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {message}
-          </Alert>
-        )}
+        {notice && <Alert severity={notice.severity} sx={{ mb: 2 }}>{notice.text}</Alert>}
 
-        {state === "success" && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {message} Redirecting...
-          </Alert>
-        )}
-
-        {(state === "error" || state === "resent") && (
-          <Alert severity={state === "error" ? "error" : "info"} sx={{ mb: 2 }}>
-            {message}
-          </Alert>
-        )}
-
-        {/* Resend UI (only show if token failed OR token missing) */}
-        {(state === "error" || !token) && (
-          <Box mt={2}>
-            <Typography variant="body2" color="text.secondary" mb={1}>
-              Token expired or invalid. Resend a new verification email:
+        {user === undefined ? (
+          <Box display="flex" justifyContent="center" py={3}><CircularProgress aria-label="Loading" /></Box>
+        ) : user ? (
+          <>
+            <Typography variant="body1" mb={3}>
+              We sent a link to <strong>{user.email}</strong>. Click it to confirm your address, then come back here.
+              Check your spam folder if you can't find it.
             </Typography>
-
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              fullWidth
-              margin="dense"
-              disabled={isBusy}
-            />
-
-            <Button
-              variant="contained"
-              onClick={resend}
-              sx={{ mt: 1.5 }}
-              disabled={isBusy}
-              fullWidth
-            >
-              {state === "resending" ? (
-                <Box display="flex" alignItems="center" gap={1}>
-                  <CircularProgress size={18} />
-                  Sending...
-                </Box>
-              ) : (
-                "Resend Verification Email"
-              )}
+            <Box display="flex" flexDirection="column" gap={1}>
+              <Button variant="contained" onClick={continueIfVerified} disabled={busy}>
+                I've verified, continue
+              </Button>
+              <Button variant="outlined" onClick={resend} disabled={busy}>
+                Send the email again
+              </Button>
+              <Button onClick={logout} disabled={busy}>
+                Log out
+              </Button>
+            </Box>
+          </>
+        ) : (
+          <>
+            <Typography variant="body1" mb={3}>
+              {notice?.severity === "success"
+                ? "You can now log in."
+                : "Log in to finish verifying your email."}
+            </Typography>
+            <Button variant="contained" fullWidth onClick={() => navigate("/", { replace: true })}>
+              Go to login
             </Button>
-          </Box>
+          </>
         )}
-
-        <Box mt={2} display="flex" gap={1}>
-          <Button variant="outlined" fullWidth disabled={isBusy} onClick={() => navigate("/", { replace: true })}>
-            Back to Home
-          </Button>
-          <Button variant="contained" fullWidth disabled={isBusy} onClick={() => navigate("/", { replace: true })}>
-            Login
-          </Button>
-        </Box>
       </Paper>
     </Box>
   );

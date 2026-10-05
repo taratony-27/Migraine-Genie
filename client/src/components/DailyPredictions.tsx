@@ -10,6 +10,7 @@ import {
   Chip, 
   Stack, 
   LinearProgress,
+  Button,
   useTheme
 } from '@mui/material';
 import {
@@ -58,14 +59,21 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
   const [loadingCount, setLoadingCount] = useState(true);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Set when the entry count itself couldn't be loaded; bump reloadKey to retry.
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setLoadingCount(false);
+      return;
+    }
 
     const initData = async () => {
       try {
         setLoadingCount(true);
         setErrorMsg(null);
+        setLoadError(false);
         setPredictions(null);
 
         const countRes = await api.get<{ count: number }>(`/api/daily-inputs/my/count?userId=${userId}`);
@@ -77,15 +85,14 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
         }
       } catch (e) {
         console.error('[DailyPredictions] Initialization error:', e);
-        setEntryCount(0);
-        setErrorMsg('Failed to load your logs.');
+        setLoadError(true);
       } finally {
         setLoadingCount(false);
       }
     };
 
     initData();
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps -- generatePredictions closes over this same userId
+  }, [userId, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps -- generatePredictions closes over this same userId
 
   const generatePredictions = async () => {
     if (!userId) return;
@@ -108,9 +115,13 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
         setErrorMsg('Received incomplete data from service.');
         setPredictions(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[DailyPredictions] Error:', error);
-      setErrorMsg('Service unavailable. Please try again later.');
+      setErrorMsg(
+        error?.response?.status === 429 && error?.response?.data?.message
+          ? error.response.data.message
+          : "We couldn't generate your forecast right now."
+      );
     } finally {
       setGeneratingAI(false);
     }
@@ -123,6 +134,32 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
       <Box display="flex" justifyContent="center" alignItems="center" minHeight={300}>
         <CircularProgress thickness={4} />
       </Box>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <Paper elevation={0} variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+        <Typography variant="body1" color="text.secondary">
+          We couldn't find your profile. Please log out and sign in again.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Paper elevation={0} variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+        <Typography variant="h6" color="text.primary" gutterBottom>
+          We couldn't load your diary
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Check your connection, then try again.
+        </Typography>
+        <Button variant="contained" onClick={() => setReloadKey((k) => k + 1)}>
+          Try again
+        </Button>
+      </Paper>
     );
   }
 
@@ -172,6 +209,11 @@ const DailyPredictions: React.FC<{ userId: string | number | null }> = ({ userId
           <Typography color="error" variant="body2" fontWeight="500">
             {errorMsg}
           </Typography>
+          {!predictions && (
+            <Button size="small" sx={{ mt: 1 }} onClick={generatePredictions} disabled={generatingAI}>
+              Try again
+            </Button>
+          )}
         </Paper>
       )}
 

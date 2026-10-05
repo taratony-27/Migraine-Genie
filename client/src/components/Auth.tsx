@@ -42,7 +42,7 @@ const Auth: React.FC<{ mode?: AuthMode; onModeChange?: (mode: AuthMode) => void 
 
   // After any successful Firebase sign-in, sync the user to MongoDB
   // and store auth state in localStorage so the rest of the app works.
-  const afterSignIn = async (name?: string) => {
+  const afterSignIn = async (name?: string, profile?: { date_of_birth?: string; gender?: string }) => {
     const user = auth.currentUser;
     if (!user) return;
 
@@ -50,7 +50,7 @@ const Auth: React.FC<{ mode?: AuthMode; onModeChange?: (mode: AuthMode) => void 
     localStorage.setItem("token", token);
 
     // Sync to MongoDB — creates or finds the user document
-    const res = await api.post("/api/users/sync", { name: name || user.displayName || "" });
+    const res = await api.post("/api/users/sync", { name: name || user.displayName || "", ...profile });
     const mongoUser = res.data?.user;
     if (mongoUser) {
       localStorage.setItem("user", JSON.stringify(mongoUser));
@@ -85,7 +85,10 @@ const Auth: React.FC<{ mode?: AuthMode; onModeChange?: (mode: AuthMode) => void 
       const cred = await createUserWithEmailAndPassword(auth, formData.email.trim(), formData.password);
       await updateProfile(cred.user, { displayName: formData.name.trim() });
       await sendEmailVerification(cred.user);
-      await afterSignIn(formData.name.trim());
+      await afterSignIn(formData.name.trim(), {
+        date_of_birth: formData.dateOfBirth || undefined,
+        gender: formData.gender || undefined,
+      });
     } catch (err: any) {
       showAlert(friendlyError(err), "error");
     } finally {

@@ -127,10 +127,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId: propUserId = null }) 
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[AIAssistant] Error talking to doctor-chat:', err);
+      // 400/429 carry a message meant for the user (too long, too many messages).
+      const status = err?.response?.status;
       setErrorMsg(
-        'The assistant is currently unavailable. Please try again in a moment.'
+        (status === 400 || status === 429) && err?.response?.data?.message
+          ? err.response.data.message
+          : 'The assistant is currently unavailable. Please try again in a moment.'
       );
     } finally {
       setLoading(false);
@@ -247,6 +251,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userId: propUserId = null }) 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          inputProps={{ maxLength: 2000 }}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: 4 } }}
         />
 

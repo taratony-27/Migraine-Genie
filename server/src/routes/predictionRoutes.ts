@@ -3,8 +3,10 @@ import express, { Request, Response } from "express";
 import axios from "axios";
 import DailyInput from "../models/DailyInput";
 import Prediction from "../models/Prediction";
-import User from "../models/User";
 import { authenticateToken } from "../middleware/auth";
+import { getAuthenticatedUserId } from "../utils/authUser";
+import { triggerLabels, vmPathiScoreOf } from "../utils/logFeatures";
+import { allowRequest, HOUR_MS } from "../utils/rateLimit";
 
 const router = express.Router();
 
@@ -43,28 +45,14 @@ function toNumber(val: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-async function getAuthenticatedUserId(req: Request): Promise<number | undefined> {
-  if (!req.user?.uid) return undefined;
-
-  const user = await User.findOne({ firebase_uid: req.user.uid }).select("user_id").lean();
-  return typeof user?.user_id === "number" ? user.user_id : undefined;
-}
-
-function normalizeTriggerLabel(input: unknown): string | null {
-  const s = String(input ?? "").trim();
-  if (!s) return null;
-  // basic cleanup
-  return s.replace(/\s+/g, " ");
-}
-
 function buildFeaturesFromLogs(recentLogs: any[]) {
   let sleepSum = 0;
   let sleepCount = 0;
   let screenSum = 0;
   let screenCount = 0;
   const triggerCounts: Record<string, number> = {};
-  let symptomSum = 0;
-  let symptomCount = 0;
+  let vmPathiSum = 0;
+  let vmPathiCount = 0;
 
   for (const rawEntry of recentLogs) {
     const entry = rawEntry as any;
@@ -81,21 +69,14 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
       screenCount++;
     }
 
-    const symptomVal = toNumber(entry.symptoms);
-    if (symptomVal !== null) {
-      symptomSum += symptomVal;
-      symptomCount++;
+    const vmPathiVal = vmPathiScoreOf(entry);
+    if (vmPathiVal !== null) {
+      vmPathiSum += vmPathiVal;
+      vmPathiCount++;
     }
 
-    const trg = entry.trigger;
-    if (trg) {
-      const parts: unknown[] = Array.isArray(trg) ? trg : String(trg).split(/[;,]/);
-      for (const p of parts) {
-        const label = normalizeTriggerLabel(p);
-        if (!label) continue;
-        const key = label.toLowerCase();
-        triggerCounts[key] = (triggerCounts[key] || 0) + 1;
-      }
+    for (const key of triggerLabels(entry.trigger)) {
+      triggerCounts[key] = (triggerCounts[key] || 0) + 1;
     }
   }
 
@@ -108,7 +89,8 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
     totalLogs: recentLogs.length,
     avgSleepHours: sleepCount > 0 ? Number((sleepSum / sleepCount).toFixed(1)) : null,
     avgScreenTimeHours: screenCount > 0 ? Number((screenSum / screenCount).toFixed(1)) : null,
-    avgSymptomScore: symptomCount > 0 ? Number((symptomSum / symptomCount).toFixed(1)) : null,
+    // VM-PATHI: 0-100 symptom severity index (sum of 25 items scored 0-4)
+    avgVmPathiScore: vmPathiCount > 0 ? Number((vmPathiSum / vmPathiCount).toFixed(1)) : null,
     commonTriggers,
   };
 }
@@ -395,6 +377,12 @@ router.get("/generate", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Cache misses call the paid AI; cap them per user.
+    if (!allowRequest(`predictions:${userId}`, 10, HOUR_MS)) {
+      res.status(429).json({ message: "Too many prediction updates. Please try again in an hour." });
+      return;
+    }
+
     console.log(`🆕 New Data Detected (Log #${newestLog.log_id}). Generating AI response...`);
 
     const sortedByDate = [...recentLogs].sort(
@@ -403,9 +391,10 @@ router.get("/generate", async (req: Request, res: Response): Promise<void> => {
 
     const contextData = sortedByDate.map((raw: any) => ({
       date: raw.log_date,
-      triggers: raw.trigger,
+      triggers: triggerLabels(raw.trigger),
       sleep: raw.sleep,
       screentime: raw.screentime,
+      vmPathiScore: vmPathiScoreOf(raw),
       symptoms: raw.symptoms,
     }));
 

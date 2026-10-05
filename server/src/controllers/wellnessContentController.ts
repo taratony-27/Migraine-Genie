@@ -1,11 +1,18 @@
 import { Request, Response } from "express";
 import WellnessContent from "../models/WellnessContent";
 import { searchYouTubeVideos, ContentCard } from "../services/youtubeService";
+import { TTLCache } from "../utils/ttlCache";
+import { allowRequest, HOUR_MS } from "../utils/rateLimit";
+
+// Each YouTube search costs 100 of the key's 10,000 daily quota units, so
+// results are shared across users for a few hours.
+const youtubeCache = new TTLCache();
+const YOUTUBE_CACHE_MS = 6 * HOUR_MS;
 
 export async function getWellnessContent(req: Request, res: Response): Promise<void> {
   const type = String(req.query.type || "all");
   const q = String(req.query.q || "").trim();
-  const limit = Number(req.query.limit) || 20;
+  const limit = Math.min(Math.max(Math.floor(Number(req.query.limit)) || 20, 1), 50);
 
   try {
     let curatedItems: ContentCard[] = [];
@@ -30,7 +37,12 @@ export async function getWellnessContent(req: Request, res: Response): Promise<v
 
     // YouTube
     const ytSearchQuery = q ? `migraine ${q}` : "migraine relief exercises";
-    const youtubeItems = await searchYouTubeVideos({ q: ytSearchQuery, maxResults: 12 });
+    const cacheKey = ytSearchQuery.toLowerCase();
+    let youtubeItems = youtubeCache.get<ContentCard[]>(cacheKey) ?? [];
+    if (!youtubeCache.get(cacheKey) && allowRequest(`youtube:${req.user!.uid}`, 20, HOUR_MS)) {
+      youtubeItems = await searchYouTubeVideos({ q: ytSearchQuery, maxResults: 12 });
+      if (youtubeItems.length > 0) youtubeCache.set(cacheKey, youtubeItems, YOUTUBE_CACHE_MS);
+    }
 
     console.log("✅ WellnessContent:", {
       q,

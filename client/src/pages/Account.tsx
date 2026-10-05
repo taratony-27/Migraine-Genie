@@ -35,6 +35,9 @@ const Account: React.FC = () => {
   } | null>(null);
 
   const [editMode, setEditMode] = useState(false);
+  // Set when /me fails with nothing cached to show; bump reloadKey to retry.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [editedUser, setEditedUser] = useState<any>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [busyAction, setBusyAction] = useState<'save' | 'reset' | 'delete' | null>(null);
@@ -73,6 +76,7 @@ const Account: React.FC = () => {
     }
 
     const loadAccount = async () => {
+      setLoadFailed(false);
       try {
         const { data } = await api.get('/api/users/me');
         const profile = data?.user ?? {};
@@ -97,12 +101,13 @@ const Account: React.FC = () => {
         }));
       } catch (err) {
         console.error('Failed to load account', err);
+        if (mounted) setLoadFailed(true);
       }
     };
 
     loadAccount();
     return () => { mounted = false; };
-  }, []);
+  }, [reloadKey]);
 
   const handleEditChange = (field: string, value: string) =>
     setEditedUser({ ...editedUser, [field]: value });
@@ -179,8 +184,15 @@ const Account: React.FC = () => {
 
   if (!user) {
     return (
-      <Box minHeight="60vh" display="flex" justifyContent="center" alignItems="center">
-        <Typography color="text.secondary">Loading profile…</Typography>
+      <Box minHeight="60vh" display="flex" flexDirection="column" gap={2} justifyContent="center" alignItems="center">
+        {loadFailed ? (
+          <>
+            <Typography color="text.secondary">We couldn't load your profile.</Typography>
+            <Button variant="contained" onClick={() => setReloadKey((k) => k + 1)}>Try again</Button>
+          </>
+        ) : (
+          <Typography color="text.secondary">Loading profile…</Typography>
+        )}
       </Box>
     );
   }

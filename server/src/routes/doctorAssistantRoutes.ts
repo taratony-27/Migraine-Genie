@@ -2,8 +2,10 @@ import express, { Request, Response } from "express";
 import axios from "axios";
 import DailyInput from "../models/DailyInput";
 import Symptom from "../models/Symptom";
-import User from "../models/User";
 import { authenticateToken } from "../middleware/auth";
+import { getAuthenticatedUserId } from "../utils/authUser";
+import { triggerLabels, vmPathiScoreOf } from "../utils/logFeatures";
+import { allowRequest, HOUR_MS } from "../utils/rateLimit";
 
 const router = express.Router();
 
@@ -40,13 +42,6 @@ function toDateKey(val: unknown): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
-async function getAuthenticatedUserId(req: Request): Promise<number | undefined> {
-  if (!req.user?.uid) return undefined;
-
-  const user = await User.findOne({ firebase_uid: req.user.uid }).select("user_id").lean();
-  return typeof user?.user_id === "number" ? user.user_id : undefined;
-}
-
 // Adjust to match your UI mapping exactly
 const SEVERITY_LEGEND: Record<number, string> = {
   0: "none",
@@ -64,14 +59,6 @@ function severityToLabel(sev: unknown): string {
   }
   if (SEVERITY_LEGEND[n] !== undefined) return `${n} (${SEVERITY_LEGEND[n]})`;
   return `${n}`;
-}
-
-function normalizeTriggers(trg: any): string[] {
-  if (!trg) return [];
-  const parts = Array.isArray(trg) ? trg : String(trg).split(/[;,]/);
-  return parts
-    .map((p) => String(p).trim().toLowerCase())
-    .filter(Boolean);
 }
 
 // Build simple log stats (sleep/screen/triggers)
@@ -102,13 +89,13 @@ function buildFeaturesFromLogs(recentLogs: any[]) {
       screenCount++;
     }
 
-    const vmPathiVal = toNumber(entry.vmPathiScore);
+    const vmPathiVal = vmPathiScoreOf(entry);
     if (vmPathiVal !== null) {
       vmPathiSum += vmPathiVal;
       vmPathiCount++;
     }
 
-    const triggers = normalizeTriggers(entry.trigger);
+    const triggers = triggerLabels(entry.trigger);
     for (const t of triggers) {
       triggerCounts[t] = (triggerCounts[t] || 0) + 1;
     }
@@ -287,9 +274,7 @@ async function callDoctorModelWithFallback(
             ? `(Showing the ${detailedLogs.length} most recent of ${totalLogDays} total logged days. The aggregate stats above already reflect ALL ${totalLogDays} days.)`
             : null,
           ...detailedLogs.map((l) => {
-            const triggerText = Array.isArray(l.triggers)
-              ? l.triggers.join(", ")
-              : String(l.triggers ?? "").trim();
+            const triggerText = (l.triggers as string[]).join(", ");
 
             const symptomsArr: any[] = Array.isArray(l.symptoms) ? l.symptoms : [];
             const symptomsText =
@@ -407,6 +392,28 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    // Only plain chat turns: a client-sent "system" message could override the prompt.
+    // Earlier assistant replies come back as history (up to ~900 tokens each).
+    const MAX_USER_CHARS = 2000;
+    const MAX_ASSISTANT_CHARS = 8000;
+    const validMessages = messages.every(
+      (m) =>
+        m &&
+        typeof m.content === "string" &&
+        ((m.role === "user" && m.content.length <= MAX_USER_CHARS) ||
+          (m.role === "assistant" && m.content.length <= MAX_ASSISTANT_CHARS))
+    );
+    if (!validMessages) {
+      res.status(400).json({ message: `Please keep each message under ${MAX_USER_CHARS} characters.` });
+      return;
+    }
+
+    // Every reply is a paid OpenRouter call; cap it per signed-in user.
+    if (!allowRequest(`doctor-chat:${req.user!.uid}`, 30, HOUR_MS)) {
+      res.status(429).json({ message: "You've sent a lot of messages. Please try again in an hour." });
+      return;
+    }
+
     let stats: any | null = null;
     let symptomStats: any | null = null;
     let contextData: any[] | null = null;
@@ -488,10 +495,10 @@ router.post("/doctor-chat", async (req: Request, res: Response): Promise<void> =
 
             return {
               date: toDateKey(raw.log_date),
-              triggers: raw.trigger,
+              triggers: triggerLabels(raw.trigger),
               sleep: raw.sleep,
               screentime: raw.screentime,
-              vmPathiScore: toNumber(raw.vmPathiScore),
+              vmPathiScore: vmPathiScoreOf(raw),
               symptoms: symptomsList,
             };
           });
